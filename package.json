@@ -1,10 +1,10 @@
 {
   "name": "voog-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Developer toolkit for Voog",
   "repository": {
-    "type" : "git",
-    "url" : "git+https://github.com/Voog/kit-cli.git"
+    "type": "git",
+    "url": "git+https://github.com/Voog/kit-cli.git"
   },
   "main": "index.js",
   "scripts": {
@@ -17,6 +17,7 @@
     "bluebird": "^3.3.4",
     "chalk": "^1.1.1",
     "chokidar": "^1.4.3",
+    "lodash": "^4.6.1",
     "meow": "^3.7.0",
     "progress": "^1.1.8"
   },
