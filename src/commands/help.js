@@ -1,26 +1,28 @@
-import {bin} from '../../package.json';
-let name = Object.keys(bin)[0];
+import {name} from '../utils';
 
-import {helpText as testHelp} from './test';
+import {unknown_command} from '../messages.json';
 
-const helpText = `
+import {helpText as testHelp} from '../commands/test.js';
+
+const helpHelp = `
 Help - Shows help about the tool or a particular command
 
 Usage
   $ ${name} help [<args>]
 `;
 
-const help = (command) => {
+const help = (args, flags) => {
+  let command = args[0];
   switch (command) {
     case 'test':
       console.log(testHelp);
       break;
     case 'help':
-      console.log(helpText);
+      console.log(helpHelp);
       break;
     default:
       console.log(`
-Unknown command!
+${unknown_command}
       `);
       break;
   }

@@ -13,7 +13,12 @@ export default {
   ],
   external: [
     'meow',
-    'chalk'
+    'chalk',
+    'fs',
+    'kit-core',
+    'path',
+    'bluebird',
+    'progress'
   ],
   dest: './index.js'
 };

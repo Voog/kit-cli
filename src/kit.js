@@ -1,13 +1,10 @@
 import meow from 'meow';
 import chalk from 'chalk';
 
-import {bin} from '../package.json';
-let name = Object.keys(bin)[0];
-
+import {name} from './utils';
 
 // COMMANDS
-import help from './commands/help';
-import test from './commands/test';
+import * as commands from './commands/index';
 
 const cli = meow({
   help: `
@@ -17,6 +14,10 @@ Usage
   $ ${name} <command> [<args] [--debug]
 
 Commands
+  test              Test command
+  pull [<files>]    Pull files
+  push [<files>]    Push files
+
   help              Show this message
   help <command>    Show help for a specific command
 
@@ -35,20 +36,8 @@ if (cli.flags.debug) {
   console.log('args:', args);
 }
 
-switch (command) {
-  case 'help':
-    if (args.length) {
-      help(args[0]);
-    } else {
-      cli.showHelp();
-    }
-    break;
-
-  case 'test':
-    test(args, flags);
-    break;
-
-  default:
-    cli.showHelp();
-    break;
+if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
+  commands[command](args, flags);
+} else {
+  cli.showHelp();
 }

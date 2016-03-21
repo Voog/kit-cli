@@ -10,8 +10,11 @@
   "author": "Mikk Pristavka (mikk@voog.com)",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.3.4",
     "chalk": "^1.1.1",
-    "meow": "^3.7.0"
+    "chokidar": "^1.4.3",
+    "meow": "^3.7.0",
+    "progress": "^1.1.8"
   },
   "devDependencies": {
     "babel-cli": "^6.5.1",
@@ -19,7 +22,8 @@
     "rollup": "^0.25.4",
     "rollup-plugin-babel": "^2.3.9",
     "rollup-plugin-json": "^2.0.0",
-    "watch": "^0.17.1"
+    "watch": "^0.17.1",
+    "kit-core": "file:../kit-core"
   },
   "bin": {
     "kit2": "index.js"

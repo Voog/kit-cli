@@ -1,5 +1,4 @@
-import {bin} from '../../package.json';
-let name = Object.keys(bin)[0];
+import {name} from '../utils';
 
 const helpText = `
 Test - Test command please ignore
@@ -10,13 +9,11 @@ Usage
 
 const test = (args, flags) => {
   console.log(`
-
 I am a test command.
-ARGS: ${args}
-FLAGS: ${flags}
-
   `);
 };
 
-export default test;
-export {helpText};
+export default test
+export {
+  helpText
+}
