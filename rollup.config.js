@@ -1,5 +1,6 @@
 import json from 'rollup-plugin-json';
 import babel from 'rollup-plugin-babel';
+import cli from 'rollup-plugin-cli';
 
 export default {
   entry: 'src/kit.js',
@@ -7,6 +8,7 @@ export default {
   sourceMap: false,
   plugins: [
     json(),
+    cli(),
     babel({
       exclude: 'node_modules/**'
     })
@@ -18,7 +20,9 @@ export default {
     'kit-core',
     'path',
     'bluebird',
-    'progress'
+    'progress',
+    'chokidar',
+    'lodash'
   ],
   dest: './index.js'
 };

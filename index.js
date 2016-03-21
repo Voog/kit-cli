@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
@@ -19,7 +20,7 @@ babelHelpers.toArray = function (arr) {
 
 babelHelpers;
 
-var bin = { "kit2": "index.js" };
+var bin = { "kit2": "./index.js" };
 
 var name = Object.keys(bin)[0];
 
