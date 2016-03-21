@@ -23,7 +23,7 @@ const pull = (args, flags) => {
   } else {
     let project = currentProject[0];
     if (files.length === 0) {
-      let bar = progressStart(Kit.projects.totalFilesFor(project), progressBarFormat);
+      let bar = progressStart(Kit.projects.totalFilesFor(project) - 1, progressBarFormat);
 
       Kit.actions.pullAllFiles(project)
         .then(promises => promises[0])
@@ -31,7 +31,7 @@ const pull = (args, flags) => {
         .then(progressEnd(bar));
 
     } else {
-      let bar = progressStart(files.length, progressBarFormat);
+      let bar = progressStart(files.length - 1, progressBarFormat);
       Promise
         .all(files.map(file => Kit.actions.pullFile(project, file)))
         .mapSeries(file => progressTick(bar))

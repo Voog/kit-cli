@@ -102,14 +102,14 @@ var pull = function pull(args, flags) {
     (function () {
       var project = currentProject[0];
       if (files.length === 0) {
-        var bar = progressStart(Kit.projects.totalFilesFor(project), progressBarFormat$1);
+        var bar = progressStart(Kit.projects.totalFilesFor(project) - 1, progressBarFormat$1);
 
         Kit.actions.pullAllFiles(project).then(function (promises) {
           return promises[0];
         }).mapSeries(progressTick(bar)).then(progressEnd(bar));
       } else {
         (function () {
-          var bar = progressStart(files.length, progressBarFormat$1);
+          var bar = progressStart(files.length - 1, progressBarFormat$1);
           Promise.all(files.map(function (file) {
             return Kit.actions.pullFile(project, file);
           })).mapSeries(function (file) {
