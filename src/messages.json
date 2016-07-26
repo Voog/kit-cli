@@ -1,5 +1,7 @@
 {
   "unknown_command": "Unknown command!",
   "no_project_found": "No project found in current directory!",
-  "watcher_ready": "Initial scan complete. Ready for changes"
+  "pulling_from": "Pulling files from",
+  "watcher_ready": "Initial scan complete. Ready for changes",
+  "specify_filename": "Please specify filename!"
 }

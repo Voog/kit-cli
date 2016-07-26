@@ -1,44 +1,66 @@
 import Kit from 'kit-core';
-import path from 'path';
 import Promise from 'bluebird';
+import chalk from 'chalk';
+
 import {
   name,
   pullFormat as progressBarFormat,
   progressStart,
   progressTick,
   progressEnd,
-  findProjectByPath
+  getCurrentProject,
+  showError,
+  showNotice
 } from '../utils';
-import {
-  no_project_found
-} from '../messages.json';
+
+import messages from '../messages.json';
+import _ from 'lodash';
+
+export const helpText = `
+Pull - pulls files from the Voog site
+
+Usage
+  $ ${name} pull [<files>]
+`;
 
 const pull = (args, flags) => {
   let files = args;
-  let currentProject = findProjectByPath(process.cwd());
+  let options = _.pick(flags, 'host', 'token', 'site');
+  let currentProject = getCurrentProject(flags);
+  let bar;
 
-  if (!currentProject.length > 0) {
-    console.log(no_project_found);
-
+  if (!currentProject) {
+    showError(messages.no_project_found);
   } else {
-    let project = currentProject[0];
-    if (files.length === 0) {
-      let bar = progressStart(Kit.projects.totalFilesFor(project) - 1, progressBarFormat);
+    let project = currentProject;
+    showNotice(
+      messages.pulling_from,
+      project.name ? `${project.name} (${project.host})` : project.host
+    );
 
-      Kit.actions.pullAllFiles(project)
-        .then(promises => promises[0])
+    if (files.length === 0) {
+      Kit.actions
+        .getTotalFileCount(project.name || project.host, options)
+        .then(total => {
+          bar = progressStart(total, progressBarFormat);
+          showNotice(`Pulling ${total} files...`);
+
+          Kit.actions
+            .pullAllFiles(project.name || project.host, options)
+            .then(promises => promises[0])
+            .mapSeries(progressTick(bar))
+            .then(progressEnd(bar));
+        })
+        .catch(e => console.log(chalk.red(e)));
+    } else {
+      bar = progressStart(files.length, progressBarFormat);
+
+      Promise
+        .all(files.map(file => Kit.actions.pullFile(project.name || project.host, file, options)))
         .mapSeries(progressTick(bar))
         .then(progressEnd(bar));
-
-    } else {
-      let bar = progressStart(files.length - 1, progressBarFormat);
-      Promise
-        .all(files.map(file => Kit.actions.pullFile(project, file)))
-        .mapSeries(file => progressTick(bar))
-        .then(progressEnd(bar));
-
     }
   }
-}
+};
 
-export default pull
+export default pull;

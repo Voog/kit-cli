@@ -1,10 +1,14 @@
 import meow from 'meow';
-import chalk from 'chalk';
 
-import {name} from './utils';
+import {
+  name,
+  getCurrentProject,
+  updateConfig
+} from './utils';
 
 // COMMANDS
 import * as commands from './commands/index';
+import _ from 'lodash';
 
 const cli = meow({
   help: `
@@ -14,9 +18,9 @@ Usage
   $ ${name} <command> [<args] [--debug]
 
 Commands
-  test              Test command
   pull [<files>]    Pull files
   push [<files>]    Push files
+  sites             List all sites
 
   help              Show this message
   help <command>    Show help for a specific command
@@ -27,17 +31,35 @@ Options
   description: false
 });
 
+const printDebugInfo = (command, args, cli) => {
+  const printObject = (object = {}) => {
+    let keys = Object.keys(object);
+    if (keys.length > 0) {
+      return `{${keys.map(key => `\n  ${key}: ${object[key]}`).join('')} }`;
+    } else {
+      return '{}';
+    }
+  };
+
+  console.log(`-------
+command: ${command}
+arguments: ${args.join(' ')}
+options: ${printObject(cli.flags)}
+current project: ${_.flow([getCurrentProject, printObject])(cli.flags)}
+-------`);
+};
+
+updateConfig({host: cli.flags.host, token: cli.flags.token}, {config_path: cli.flags.configPath, local: true});
+
 let [command, ...args] = cli.input;
 let flags = cli.flags;
-
-if (cli.flags.debug) {
-  console.log(cli);
-  console.log('command:', command);
-  console.log('args:', args);
-}
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
   commands[command](args, flags);
 } else {
   cli.showHelp();
+}
+
+if (cli.flags.debug) {
+  printDebugInfo(command, args, cli);
 }

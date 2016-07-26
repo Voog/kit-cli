@@ -22,7 +22,8 @@ export default {
     'bluebird',
     'progress',
     'chokidar',
-    'lodash'
+    'lodash',
+    'inquirer'
   ],
   dest: './index.js'
 };
