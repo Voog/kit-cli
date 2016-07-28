@@ -34,7 +34,8 @@
     "watch": "^0.17.1"
   },
   "bin": {
-    "kit2": "./index.js"
+    "voog": "./index.js",
+    "kit": "./index.js"
   },
   "preferGlobal": true
 }
