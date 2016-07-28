@@ -6,7 +6,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var meow = _interopDefault(require('meow'));
 var ProgressBar = _interopDefault(require('progress'));
 var Kit = _interopDefault(require('kit-core'));
-var _$1 = _interopDefault(require('lodash'));
+var _ = _interopDefault(require('lodash'));
 var chalk = _interopDefault(require('chalk'));
 var Promise = _interopDefault(require('bluebird'));
 var path = require('path');
@@ -39,14 +39,14 @@ var progressBarOptions = function progressBarOptions(total) {
 
 var getCurrentProject = function getCurrentProject(flags) {
   var currentDir = process.cwd();
-  var options = _$1.pick(flags, 'configPath', 'global', 'local', 'host', 'token', 'site', 'name');
+  var options = _.pick(flags, 'configPath', 'global', 'local', 'host', 'token', 'site', 'name');
 
   try {
     // prefer explicit options
-    if (_$1.has(options, 'site') || _$1.has(options, 'name') || _$1.has(options, 'host') && !_$1.has(options, 'token')) {
+    if (_.has(options, 'site') || _.has(options, 'name') || _.has(options, 'host') && !_.has(options, 'token')) {
       return Kit.sites.byName(options.site || options.name || options.host);
-    } else if (_$1.has(options, 'host') && _$1.has(options, 'token')) {
-      return _$1.pick(options, 'host', 'token');
+    } else if (_.has(options, 'host') && _.has(options, 'token')) {
+      return _.pick(options, 'host', 'token');
       // otherwise use Kit's own config logic
     } else {
         return findProjectByPath(currentDir, options);
@@ -77,7 +77,7 @@ var progressEnd = function progressEnd(bar) {
 };
 
 var findProjectByPath = function findProjectByPath(dir, options) {
-  return Kit.sites.byName(_$1.head(Kit.sites.names(options).filter(function (name) {
+  return Kit.sites.byName(_.head(Kit.sites.names(options).filter(function (name) {
     return dir.startsWith(Kit.sites.dirFor(name, options));
   })));
 };
@@ -85,7 +85,7 @@ var findProjectByPath = function findProjectByPath(dir, options) {
 var updateConfig = function updateConfig(site) {
   var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
-  if (_$1.has(site, 'host') && _$1.has(site, 'token') && _$1.indexOf(Kit.sites.hosts, site.host) < 0) {
+  if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
     if (!Kit.config.exists(options)) {
       console.log('config doesn\'t exist');
       Kit.config.create(options);
@@ -95,8 +95,8 @@ var updateConfig = function updateConfig(site) {
   }
 };
 
-var showError = _$1.flow(chalk.red, console.log);
-var showNotice = _$1.flow(chalk.white, console.log);
+var showError = _.flow(chalk.red, console.log);
+var showNotice = _.flow(chalk.white, console.log);
 
 var unknown_command = "Unknown command!";
 var no_project_found = "No project found in current directory!";
@@ -115,7 +115,7 @@ var helpText = '\nPull - pulls files from the Voog site\n\nUsage\n  $ ' + name +
 
 var pull = function pull(args, flags) {
   var files = args;
-  var options = _$1.pick(flags, 'host', 'token', 'site');
+  var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = getCurrentProject(flags);
   var bar = void 0;
 
@@ -170,10 +170,12 @@ var pushFiles = function pushFiles(project, files) {
 
 var push = function push(args, flags) {
   var files = args;
-  var options = _$1.pick(flags, 'host', 'token', 'site');
+  var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = findProjectByPath(process.cwd(), options);
 
-  if (!currentProject) {} else {
+  if (!currentProject) {
+    console.log(no_project_found);
+  } else {
     var project = currentProject;
     if (files.length === 0) {
       pushAllFiles(project);
@@ -187,7 +189,7 @@ var helpText$2 = '\nAdd - creates a new file and adds it to the site\n\nUsage\n 
 
 var add = function add(args, flags) {
   var files = args;
-  var options = _$1.pick(flags, 'host', 'token', 'site');
+  var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
@@ -209,7 +211,7 @@ var helpText$3 = '\nRemove - removes a file, both locally and from the site\n\nU
 
 var remove = function remove(args, flags) {
   var files = args;
-  var options = _$1.pick(flags, 'host', 'token', 'site');
+  var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
@@ -231,15 +233,22 @@ var helpText$4 = '\nSites - lists all sites defined in the current scope\n\nUsag
 
 var siteRow = function siteRow(name, flags) {
   var currentProject = getCurrentProject(flags);
+
   var host = Kit.sites.hostFor(name);
-  var current = name === currentProject.name || name == currentProject.host ? ' [current]' : '';
+  var current = '';
+
+  if (!currentProject) {
+    current = '';
+  } else {
+    current = name === currentProject.name || name == currentProject.host ? ' [current]' : '';
+  }
 
   return '  ' + name + ' (' + host + ')' + current;
 };
 
 var sites = function sites(args, flags) {
   var names = Kit.sites.names();
-  console.log('Sites:\n' + names.map(_$1.curryRight(siteRow, flags)).join('\n') + '\n');
+  console.log('Sites:\n' + names.map(_.curryRight(siteRow, flags)).join('\n') + '\n');
 };
 
 var helpText$5 = '\nWatch - watches the current folder and adds/updates/removes files on the site\n\nUsage\n  $ ' + name + ' watch\n';
@@ -277,20 +286,21 @@ var watch = function watch(args, flags) {
       persistent: true
     });
 
-    watcher.on('ready', onReady).on('add', _$1.curry(onAdd)(project)).on('change', _$1.curry(onChange)(project)).on('unlink', _$1.curry(onRemove)(project));
+    watcher.on('ready', onReady).on('add', _.curry(onAdd)(project)).on('change', _.curry(onChange)(project)).on('unlink', _.curry(onRemove)(project));
   }
 };
 
-var helpHelp = '\nHelp - Shows help about the tool or a particular command\n\nUsage\n  $ ' + name + ' help <command>\n';
+var helpHelp = '\nHelp - Shows help about a particular command\n\nUsage\n  $ ' + name + ' help <command>\n';
 
-var help = function help(args, flags) {
+var help = function help(args) {
   var helpTexts = {
     pull: helpText,
     push: helpText$1,
     add: helpText$2,
     remove: helpText$3,
     sites: helpText$4,
-    watch: helpText$5
+    watch: helpText$5,
+    help: helpHelp
   };
 
   var command = args[0];
@@ -315,7 +325,7 @@ var commands = Object.freeze({
 });
 
 var cli = meow({
-  help: '\n' + name + ' is a command-line tool to synchronize Voog layout files.\n\nUsage\n  $ ' + name + ' <command> [<args] [--debug]\n\nCommands\n  pull [<files>]    Pull files\n  push [<files>]    Push files\n  sites             List all sites\n\n  help              Show this message\n  help <command>    Show help for a specific command\n\nOptions\n  --debug           Show debugging output\n',
+  help: '\n' + name + ' is a command-line tool to synchronize Voog layout files.\n\nUsage\n  $ ' + name + ' <command> [<args] [--debug]\n\nCommands\n  pull [<files>]    Pull files\n  push [<files>]    Push files\n  add [<files>]     Add files\n  remove [<files>]  Remove files\n  watch             Watch for changes\n  sites             List all sites\n\n  help              Show this message\n  help <command>    Show help for a specific command\n\nOptions\n  --debug           Show debugging output\n',
   description: false
 });
 
@@ -333,7 +343,7 @@ var printDebugInfo = function printDebugInfo(command, args, cli) {
     }
   };
 
-  console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _$1.flow([getCurrentProject, printObject])(cli.flags) + '\n-------');
+  console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _.flow([getCurrentProject, printObject])(cli.flags) + '\n-------');
 };
 
 updateConfig({ host: cli.flags.host, token: cli.flags.token }, { config_path: cli.flags.configPath, local: true });

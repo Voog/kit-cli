@@ -15,8 +15,15 @@ Usage
 
 const siteRow = (name, flags) => {
   const currentProject = getCurrentProject(flags);
+
   const host = Kit.sites.hostFor(name);
-  const current = (name === currentProject.name || name == currentProject.host) ? ' [current]' : '';
+  let current = '';
+
+  if (!currentProject) {
+    current = '';
+  } else {
+    current = (name === currentProject.name || name == currentProject.host) ? ' [current]' : '';
+  }
 
   return `  ${name} (${host})${current}`;
 };

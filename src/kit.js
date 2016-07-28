@@ -20,6 +20,9 @@ Usage
 Commands
   pull [<files>]    Pull files
   push [<files>]    Push files
+  add [<files>]     Add files
+  remove [<files>]  Remove files
+  watch             Watch for changes
   sites             List all sites
 
   help              Show this message

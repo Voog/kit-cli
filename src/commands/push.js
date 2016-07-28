@@ -11,7 +11,7 @@ import {
   findProjectByPath
 } from '../utils';
 
-import no_project_found from './messages';
+import {no_project_found} from '../messages.json';
 
 export const helpText = `
 Push - pushes files to the Voog site
