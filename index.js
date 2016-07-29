@@ -20,7 +20,7 @@ babelHelpers.toArray = function (arr) {
 
 babelHelpers;
 
-var bin = { "kit2": "./index.js" };
+var bin = { "voog": "./index.js", "kit": "./index.js" };
 
 var name = Object.keys(bin)[0];
 
