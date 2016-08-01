@@ -255,29 +255,30 @@ var helpText$5 = '\nWatch - watches the current folder and adds/updates/removes 
 
 var ready = false;
 var onReady = function onReady() {
-  console.log(watcher_ready);
+  showNotice(watcher_ready);
   ready = true;
 };
 
 var onAdd = function onAdd(project, path) {
   if (ready) {
-    console.log('File ' + path + ' has been added');
+    showNotice('File ' + path + ' has been added');
   }
 };
 
 var onChange = function onChange(project, path) {
-  console.log('File ' + path + ' has been changed');
+  showNotice('File ' + path + ' has been changed');
   pushFiles(project, [path]);
 };
 
 var onRemove = function onRemove(project, path) {
-  console.log('File ' + path + ' has been removed');
+  showNotice('File ' + path + ' has been removed');
 };
 
 var watch = function watch(args, flags) {
-  var currentProject = findProjectByPath(process.cwd());
-  if (!currentProject.length > 0) {
-    console.log(no_project_found);
+  var currentProject = getCurrentProject(flags);
+
+  if (!currentProject) {
+    showError(no_project_found);
   } else {
     var project = currentProject;
     var dirs = ['assets', 'images', 'javascripts', 'stylesheets', 'layouts', 'components'];

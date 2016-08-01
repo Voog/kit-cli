@@ -5,14 +5,14 @@ import chokidar from 'chokidar';
 import _ from 'lodash';
 import {
   name,
-  pullFormat as progressBarFormat,
-  progressStart,
-  progressTick,
-  progressEnd,
-  findProjectByPath
+  getCurrentProject,
+  showError,
+  showNotice
 } from '../utils';
 
 import {pushFiles} from './push';
+import {addFiles} from './add';
+import {removeFiles} from './remove';
 
 import {
   no_project_found,
@@ -26,33 +26,32 @@ Usage
   $ ${name} watch
 `;
 
-
 let ready = false;
 const onReady = () => {
-  console.log(watcher_ready);
+  showNotice(watcher_ready);
   ready = true;
 };
 
 const onAdd = (project, path) => {
   if (ready) {
-    console.log(`File ${path} has been added`);
+    showNotice(`File ${path} has been added`);
   }
 };
 
 const onChange = (project, path) => {
-  console.log(`File ${path} has been changed`);
-  pushFiles(project, [path])
+  showNotice(`File ${path} has been changed`);
+  pushFiles(project, [path]);
 };
 
 const onRemove = (project, path) => {
-  console.log(`File ${path} has been removed`);
+  showNotice(`File ${path} has been removed`);
 };
 
 const watch = (args, flags) => {
-  var currentProject = findProjectByPath(process.cwd());
-  if (!currentProject.length > 0) {
-    console.log(no_project_found);
+  const currentProject = getCurrentProject(flags);
 
+  if (!currentProject) {
+    showError(no_project_found);
   } else {
     let project = currentProject;
     let dirs = ['assets', 'images', 'javascripts', 'stylesheets', 'layouts', 'components'];
