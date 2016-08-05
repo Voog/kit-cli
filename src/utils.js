@@ -34,7 +34,7 @@ const getCurrentProject = (flags) => {
       return findProjectByPath(currentDir, options);
     }
   } catch (e) {
-    console.log(chalk.red(e.message));
+    showError(e.message);
   }
 };
 
@@ -66,11 +66,11 @@ const findProjectByPath = (dir, options) => {
 
 const updateConfig = (site, options = {}) => {
   if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
-    if (!Kit.config.exists(options)) {
-      console.log('config doesn\'t exist');
+    if (!Kit.config.configExists(options)) {
+      showError('Config not found.');
       Kit.config.create(options);
     }
-    console.log('adding site', site);
+    showNotice('Creating config and adding site', (site.name ? `${site.name} (${site.host})` : site.host));
     Kit.sites.add(Object.assign({}, site, {path: process.cwd()}), options);
   }
 };

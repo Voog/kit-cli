@@ -52,7 +52,7 @@ current project: ${_.flow([getCurrentProject, printObject])(cli.flags)}
 -------`);
 };
 
-updateConfig({host: cli.flags.host, token: cli.flags.token}, {config_path: cli.flags.configPath, local: true});
+updateConfig({host: cli.flags.host, token: cli.flags.token, name: cli.flags.name}, {config_path: cli.flags.configPath, local: true});
 
 let [command, ...args] = cli.input;
 let flags = cli.flags;

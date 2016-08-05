@@ -52,7 +52,7 @@ var getCurrentProject = function getCurrentProject(flags) {
         return findProjectByPath(currentDir, options);
       }
   } catch (e) {
-    console.log(chalk.red(e.message));
+    showError(e.message);
   }
 };
 
@@ -86,11 +86,11 @@ var updateConfig = function updateConfig(site) {
   var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
   if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
-    if (!Kit.config.exists(options)) {
-      console.log('config doesn\'t exist');
+    if (!Kit.config.configExists(options)) {
+      showError('Config not found.');
       Kit.config.create(options);
     }
-    console.log('adding site', site);
+    showNotice('Creating config and adding site', site.name ? site.name + ' (' + site.host + ')' : site.host);
     Kit.sites.add(Object.assign({}, site, { path: process.cwd() }), options);
   }
 };
@@ -347,7 +347,7 @@ var printDebugInfo = function printDebugInfo(command, args, cli) {
   console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _.flow([getCurrentProject, printObject])(cli.flags) + '\n-------');
 };
 
-updateConfig({ host: cli.flags.host, token: cli.flags.token }, { config_path: cli.flags.configPath, local: true });
+updateConfig({ host: cli.flags.host, token: cli.flags.token, name: cli.flags.name }, { config_path: cli.flags.configPath, local: true });
 
 var _cli$input = babelHelpers.toArray(cli.input);
 
