@@ -31,7 +31,7 @@ The global file's structure should minimally be as follows:
 
 ## Usage
 
-The main commands to use voog-kit are `pull`, `push` and `watch`. These commands can only be used in folders that are defined in the global `.voog` file as a project's `path`. 
+The main commands to use voog-kit are `pull`, `push` and `watch`.
 
 ## Commands
 
