@@ -275,7 +275,9 @@ var onRemove = function onRemove(project, path) {
 };
 
 var watch = function watch(args, flags) {
-  var currentProject = getCurrentProject(flags);
+  var files = args;
+  var options = _.pick(flags, 'host', 'token', 'site');
+  var currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
     showError(no_project_found);
@@ -347,7 +349,14 @@ var printDebugInfo = function printDebugInfo(command, args, cli) {
   console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _.flow([getCurrentProject, printObject])(cli.flags) + '\n-------');
 };
 
-updateConfig({ host: cli.flags.host, token: cli.flags.token, name: cli.flags.name }, { config_path: cli.flags.configPath, local: true });
+updateConfig({
+  host: cli.flags.host,
+  token: cli.flags.token,
+  name: cli.flags.name
+}, {
+  config_path: cli.flags.configPath,
+  local: true
+});
 
 var _cli$input = babelHelpers.toArray(cli.input);
 
@@ -358,7 +367,15 @@ var args = _cli$input.slice(1);
 var flags = cli.flags;
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
-  commands[command](args, flags);
+  try {
+    commands[command](args, flags);
+  } catch (e) {
+    showError(e.message);
+
+    if (cli.flags.debug) {
+      console.log(e.stack);
+    }
+  }
 } else {
   cli.showHelp();
 }

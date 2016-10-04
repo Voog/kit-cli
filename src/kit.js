@@ -3,7 +3,8 @@ import meow from 'meow';
 import {
   name,
   getCurrentProject,
-  updateConfig
+  updateConfig,
+  showError
 } from './utils';
 
 // COMMANDS
@@ -52,13 +53,28 @@ current project: ${_.flow([getCurrentProject, printObject])(cli.flags)}
 -------`);
 };
 
-updateConfig({host: cli.flags.host, token: cli.flags.token, name: cli.flags.name}, {config_path: cli.flags.configPath, local: true});
+updateConfig({
+  host: cli.flags.host,
+  token: cli.flags.token,
+  name: cli.flags.name
+}, {
+  config_path: cli.flags.configPath,
+  local: true
+});
 
 let [command, ...args] = cli.input;
 let flags = cli.flags;
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
-  commands[command](args, flags);
+  try {
+    commands[command](args, flags);
+  } catch (e) {
+    showError(e.message);
+
+    if (cli.flags.debug) {
+      console.log(e.stack);
+    }
+  }
 } else {
   cli.showHelp();
 }

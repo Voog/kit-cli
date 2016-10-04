@@ -5,7 +5,7 @@ import chokidar from 'chokidar';
 import _ from 'lodash';
 import {
   name,
-  getCurrentProject,
+  findProjectByPath,
   showError,
   showNotice
 } from '../utils';
@@ -48,7 +48,9 @@ const onRemove = (project, path) => {
 };
 
 const watch = (args, flags) => {
-  const currentProject = getCurrentProject(flags);
+  let files = args;
+  let options = _.pick(flags, 'host', 'token', 'site');
+  let currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
     showError(no_project_found);
