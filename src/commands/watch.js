@@ -35,6 +35,7 @@ const onReady = () => {
 const onAdd = (project, path) => {
   if (ready) {
     showNotice(`File ${path} has been added`);
+    addFiles(project, [path]);
   }
 };
 
@@ -45,10 +46,10 @@ const onChange = (project, path) => {
 
 const onRemove = (project, path) => {
   showNotice(`File ${path} has been removed`);
+  removeFiles(project, [path]);
 };
 
 const watch = (args, flags) => {
-  let files = args;
   let options = _.pick(flags, 'host', 'token', 'site');
   let currentProject = findProjectByPath(process.cwd(), options);
 

@@ -1,6 +1,6 @@
 import Kit from 'kit-core';
 import Promise from 'bluebird';
-import chalk from 'chalk';
+import _ from 'lodash';
 
 import {
   name,
@@ -9,58 +9,121 @@ import {
   progressTick,
   progressEnd,
   getCurrentProject,
+  showNotice,
   showError,
-  showNotice
+  fileName
 } from '../utils';
 
 import messages from '../messages.json';
-import _ from 'lodash';
 
 export const helpText = `
 Pull - pulls files from the Voog site
 
 Usage
   $ ${name} pull [<files>]
+
+  Using pull without arguments pulls all layout files from your site.
 `;
+
+const pullAllFiles = (project, options) => {
+  let projectName = project.name || project.host;
+  // setting progress bar length to 0 at first because we don't know how many files there are before pulling
+  let bar = progressStart(0, progressBarFormat);
+
+  return Kit.actions.pullAllFiles(projectName, options)
+    .then(promises => {
+      let files = _.head(promises);
+      bar.total = files.length + 1; // set progress bar length based on number of files found
+      return files;
+    })
+    .each(progressTick(bar)) // bump the progress bar as each promise resolves
+    .then(files => {
+      // separate invalid files from resolved files
+      return files.reduce(
+        (acc, file) => {
+          if (!file.failed) {
+            return Object.assign({}, {rejected: acc.rejected, resolved: acc.resolved.concat(file)});
+          } else {
+            return Object.assign({}, {rejected: acc.rejected.concat(file), resolved: acc.resolved});
+          }
+        },
+        {rejected: [], resolved: []}
+      );
+    })
+    .then(({rejected, resolved}) => {
+      if (resolved.length > 0) {
+        // show final message on the progress bar
+        progressEnd(bar)(resolved.length, 'pulled');
+      }
+
+      if (rejected.length > 0) {
+        // show invalid files
+        showError(`There were some errors:\n${rejected.map(f => `  ${f.file} (${f.message})`).join('\n')}`);
+      }
+    });
+};
+
+const pullFiles = (project, files, options) => {
+  // initialize progress bar with length of files given as arguments
+  let bar = progressStart(files.length, progressBarFormat);
+  let projectName = project.name || project.host;
+
+  Promise
+    .each(
+      files.map(file => Kit.actions.pullFile(projectName, file, options)),
+      // bump the progress bar as each promise resolves
+      progressTick(bar)
+    )
+    .then(files => {
+      // separate invalid files from resolved files
+      return files.reduce(
+        (acc, file) => {
+          if (!file.failed) {
+            return Object.assign({}, {rejected: acc.rejected, resolved: acc.resolved.concat(file)});
+          } else {
+            return Object.assign({}, {rejected: acc.rejected.concat(file), resolved: acc.resolved});
+          }
+        },
+        {rejected: [], resolved: []}
+      );
+    })
+    .then(({rejected, resolved}) => {
+      if (resolved.length > 0) {
+        // show final message on the progress bar
+        showNotice(`Successfully pulled ${resolved.length} file${resolved.length > 1 ? 's' : ''}:`)
+        showNotice(resolved.map(f => `  ${fileName(f)}`).join('\n'));
+      }
+
+      if (rejected.length > 0) {
+        // show invalid files
+        showError(`There were some errors:\n${rejected.map(f => `  ${f.file} (${f.message})`).join('\n')}`);
+      }
+    });
+};
 
 const pull = (args, flags) => {
   let files = args;
   let options = _.pick(flags, 'host', 'token', 'site');
   let currentProject = getCurrentProject(flags);
-  let bar;
 
   if (!currentProject) {
-    showError(messages.no_project_found);
+    showNotice(messages.no_project_found);
   } else {
     let project = currentProject;
-    showNotice(
-      messages.pulling_from,
-      project.name ? `${project.name} (${project.host})` : project.host
-    );
+    let projectName = project.name ? `${project.name} (${project.host})` : project.host;
+
+    showNotice(messages.pulling_from, projectName);
 
     if (files.length === 0) {
-      Kit.actions
-        .getTotalFileCount(project.name || project.host, options)
-        .then(total => {
-          bar = progressStart(total, progressBarFormat);
-          showNotice(`Pulling ${total} files...`);
-
-          Kit.actions
-            .pullAllFiles(project.name || project.host, options)
-            .then(promises => promises[0])
-            .mapSeries(progressTick(bar))
-            .then(progressEnd(bar));
-        })
-        .catch(e => console.log(chalk.red(e)));
+      pullAllFiles(project, options);
     } else {
-      bar = progressStart(files.length, progressBarFormat);
-
-      Promise
-        .all(files.map(file => Kit.actions.pullFile(project.name || project.host, file, options)))
-        .mapSeries(progressTick(bar))
-        .then(progressEnd(bar));
+      pullFiles(project, files, options);
     }
   }
 };
 
 export default pull;
+export {
+  pullAllFiles,
+  pullFiles
+};

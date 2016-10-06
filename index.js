@@ -56,22 +56,42 @@ var getCurrentProject = function getCurrentProject(flags) {
   }
 };
 
+/**
+ * Returns a new progressbar with the given length and format
+ * @param  {Number} total  Length of the progress bar
+ * @param  {Object} format Format for the ProgressBar (see pushFormat and pullFormat)
+ * @return {Object}        ProgressBar
+ */
 var progressStart = function progressStart(total, format) {
   return new ProgressBar(format, progressBarOptions(total + 1));
 };
 
+/**
+ * Returns a function that ticks the given progressbar with the given file info
+ * @param  {Object} bar   ProgressBar to tick
+ * @return {Function}     Object -> Void
+ */
 var progressTick = function progressTick(bar) {
   return function (file) {
-    bar.tick({
-      file: file.filename || file.title
-    });
+    if (file.failed) {
+      bar.total -= 1;
+    } else {
+      bar.tick({
+        file: file.filename || file.title
+      });
+    }
   };
 };
 
+/**
+ * Final tick for the given progressbar
+ * @param  {Object} bar   ProgressBar to tick
+ * @return {Function}     Object -> Void
+ */
 var progressEnd = function progressEnd(bar) {
-  return function () {
-    bar.tick({
-      file: 'Done!'
+  return function (count, verb) {
+    return bar.tick({
+      file: 'Successfully ' + verb + ' ' + count + ' file' + (count > 1 ? 's' : '')
     });
   };
 };
@@ -98,94 +118,270 @@ var updateConfig = function updateConfig(site) {
 var showError = _.flow(chalk.red, console.log);
 var showNotice = _.flow(chalk.white, console.log);
 
+var fileName = function fileName(file) {
+  if (_.has(file, 'layout_name')) {
+    // layout or component
+    return (file.component ? 'components' : 'layouts') + '/' + file.title;
+  } else {
+    // stylesheet, script file, image or asset
+    var folder = void 0;
+    if (file.asset_type !== 'unknown') {
+      folder = file.asset_type + 's';
+    } else {
+      folder = 'assets';
+    }
+    return folder + '/' + file.filename;
+  }
+};
+
 var unknown_command = "Unknown command!";
 var no_project_found = "No project found in current directory!";
 var pulling_from = "Pulling files from";
+var pulling_file_from = "Pulling %FILE% from";
+var pushing_to = "Pushing files to";
+var pushing_file_to = "Pushing %FILE% to";
+var created_files = "Created %COUNT% new file";
+var removed_files = "Removed %COUNT% file";
 var watcher_ready = "Initial scan complete. Ready for changes";
 var specify_filename = "Please specify filename!";
 var messages = {
 	unknown_command: unknown_command,
 	no_project_found: no_project_found,
 	pulling_from: pulling_from,
+	pulling_file_from: pulling_file_from,
+	pushing_to: pushing_to,
+	pushing_file_to: pushing_file_to,
+	created_files: created_files,
+	removed_files: removed_files,
 	watcher_ready: watcher_ready,
 	specify_filename: specify_filename
 };
 
-var helpText = '\nPull - pulls files from the Voog site\n\nUsage\n  $ ' + name + ' pull [<files>]\n';
+var helpText = '\nPull - pulls files from the Voog site\n\nUsage\n  $ ' + name + ' pull [<files>]\n\n  Using pull without arguments pulls all layout files from your site.\n';
+
+var pullAllFiles = function pullAllFiles(project, options) {
+  var projectName = project.name || project.host;
+  // setting progress bar length to 0 at first because we don't know how many files there are before pulling
+  var bar = progressStart(0, progressBarFormat$1);
+
+  return Kit.actions.pullAllFiles(projectName, options).then(function (promises) {
+    var files = _.head(promises);
+    bar.total = files.length + 1; // set progress bar length based on number of files found
+    return files;
+  }).each(progressTick(bar)) // bump the progress bar as each promise resolves
+  .then(function (files) {
+    // separate invalid files from resolved files
+    return files.reduce(function (acc, file) {
+      if (!file.failed) {
+        return Object.assign({}, { rejected: acc.rejected, resolved: acc.resolved.concat(file) });
+      } else {
+        return Object.assign({}, { rejected: acc.rejected.concat(file), resolved: acc.resolved });
+      }
+    }, { rejected: [], resolved: [] });
+  }).then(function (_ref) {
+    var rejected = _ref.rejected;
+    var resolved = _ref.resolved;
+
+    if (resolved.length > 0) {
+      // show final message on the progress bar
+      progressEnd(bar)(resolved.length, 'pulled');
+    }
+
+    if (rejected.length > 0) {
+      // show invalid files
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
+};
+
+var pullFiles = function pullFiles(project, files, options) {
+  // initialize progress bar with length of files given as arguments
+  var bar = progressStart(files.length, progressBarFormat$1);
+  var projectName = project.name || project.host;
+
+  Promise.each(files.map(function (file) {
+    return Kit.actions.pullFile(projectName, file, options);
+  }),
+  // bump the progress bar as each promise resolves
+  progressTick(bar)).then(function (files) {
+    // separate invalid files from resolved files
+    return files.reduce(function (acc, file) {
+      if (!file.failed) {
+        return Object.assign({}, { rejected: acc.rejected, resolved: acc.resolved.concat(file) });
+      } else {
+        return Object.assign({}, { rejected: acc.rejected.concat(file), resolved: acc.resolved });
+      }
+    }, { rejected: [], resolved: [] });
+  }).then(function (_ref2) {
+    var rejected = _ref2.rejected;
+    var resolved = _ref2.resolved;
+
+    if (resolved.length > 0) {
+      // show final message on the progress bar
+      showNotice('Successfully pulled ' + resolved.length + ' file' + (resolved.length > 1 ? 's' : '') + ':');
+      showNotice(resolved.map(function (f) {
+        return '  ' + fileName(f);
+      }).join('\n'));
+    }
+
+    if (rejected.length > 0) {
+      // show invalid files
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
+};
 
 var pull = function pull(args, flags) {
   var files = args;
   var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = getCurrentProject(flags);
-  var bar = void 0;
 
   if (!currentProject) {
-    showError(messages.no_project_found);
+    showNotice(messages.no_project_found);
   } else {
-    (function () {
-      var project = currentProject;
-      showNotice(messages.pulling_from, project.name ? project.name + ' (' + project.host + ')' : project.host);
+    var project = currentProject;
+    var projectName = project.name ? project.name + ' (' + project.host + ')' : project.host;
 
-      if (files.length === 0) {
-        Kit.actions.getTotalFileCount(project.name || project.host, options).then(function (total) {
-          bar = progressStart(total, progressBarFormat$1);
-          showNotice('Pulling ' + total + ' files...');
+    showNotice(messages.pulling_from, projectName);
 
-          Kit.actions.pullAllFiles(project.name || project.host, options).then(function (promises) {
-            return promises[0];
-          }).mapSeries(progressTick(bar)).then(progressEnd(bar));
-        }).catch(function (e) {
-          return console.log(chalk.red(e));
-        });
-      } else {
-        bar = progressStart(files.length, progressBarFormat$1);
-
-        Promise.all(files.map(function (file) {
-          return Kit.actions.pullFile(project.name || project.host, file, options);
-        })).mapSeries(progressTick(bar)).then(progressEnd(bar));
-      }
-    })();
+    if (files.length === 0) {
+      pullAllFiles(project, options);
+    } else {
+      pullFiles(project, files, options);
+    }
   }
 };
 
-var helpText$1 = '\nPush - pushes files to the Voog site\n\nUsage\n  $ ' + name + ' push [<files>]\n';
+var helpText$1 = '\nPush - pushes files to the Voog site\n\nUsage\n  $ ' + name + ' push [<files>]\n\n  Using push without arguments pushes all layout files to your site\n';
 
-var pushAllFiles = function pushAllFiles(project) {
-  var bar = progressStart(Kit.sites.totalFilesFor(project), progressBarFormat);
+var pushAllFiles = function pushAllFiles(project, options) {
   var projectName = project.name || project.host;
+  // initialize progress bar with number of local files
+  var bar = progressStart(Kit.sites.totalFilesFor(projectName, options), progressBarFormat);
 
-  Kit.actions.pushAllFiles(projectName).then(function (promises) {
-    return promises[0];
-  }).mapSeries(progressTick(bar)).then(progressEnd(bar));
+  return Kit.actions.pushAllFiles(projectName, options).then(function (promises) {
+    return _.head(promises);
+  }).each(progressTick(bar)) // bump progress bar as each promise resolves
+  .then(function (files) {
+    // separate invalid files from resolved files
+    return files.reduce(function (acc, file) {
+      if (!file.failed) {
+        return Object.assign({}, { rejected: acc.rejected, resolved: acc.resolved.concat(file) });
+      } else {
+        return Object.assign({}, { rejected: acc.rejected.concat(file), resolved: acc.resolved });
+      }
+    }, { rejected: [], resolved: [] });
+  }).then(function (_ref) {
+    var rejected = _ref.rejected;
+    var resolved = _ref.resolved;
+
+    if (resolved.length > 0) {
+      // show final message on the progress bar
+      progressEnd(bar)(resolved.length, 'pushed');
+    }
+
+    if (rejected.length > 0) {
+      // show invalid files
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
 };
 
-var pushFiles = function pushFiles(project, files) {
-  var bar = progressStart(files.length, progressBarFormat);
+var pushFiles = function pushFiles(project, files, options) {
+  // initialize progress bar with length of files given as arguments
   var projectName = project.name || project.host;
 
   Promise.all(files.map(function (file) {
-    return Kit.actions.pushFile(projectName, file);
-  })).mapSeries(progressTick(bar)).then(progressEnd(bar));
+    return Kit.actions.pushFile(projectName, file, options);
+  })).then(function (files) {
+    // separate invalid files from resolved files
+    return files.reduce(function (acc, file) {
+      if (!file.failed) {
+        return Object.assign({}, { rejected: acc.rejected, resolved: acc.resolved.concat(file) });
+      } else {
+        return Object.assign({}, { rejected: acc.rejected.concat(file), resolved: acc.resolved });
+      }
+    }, { rejected: [], resolved: [] });
+  }).then(function (_ref2) {
+    var rejected = _ref2.rejected;
+    var resolved = _ref2.resolved;
+
+    if (resolved.length > 0) {
+      showNotice('Successfully pushed ' + resolved.length + ' file' + (resolved.length > 1 ? 's' : '') + ':');
+      showNotice(resolved.map(function (f) {
+        return '  ' + fileName(f);
+      }).join('\n'));
+    }
+
+    if (rejected.length > 0) {
+      // show invalid files
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
 };
 
 var push = function push(args, flags) {
   var files = args;
   var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = findProjectByPath(process.cwd(), options);
+  var currentProject = getCurrentProject(flags);
 
   if (!currentProject) {
-    console.log(no_project_found);
+    showNotice(messages.no_project_found);
   } else {
     var project = currentProject;
+    var projectName = project.name ? project.name + ' (' + project.host + ')' : project.host;
+
+    showNotice(messages.pushing_to, projectName);
+
     if (files.length === 0) {
-      pushAllFiles(project);
+      pushAllFiles(project, options);
     } else {
-      pushFiles(project, files);
+      pushFiles(project, files, options);
     }
   }
 };
 
 var helpText$2 = '\nAdd - creates a new file and adds it to the site\n\nUsage\n  $ ' + name + ' name <filename>\n';
+
+var addFiles = function addFiles(project, files) {
+  var options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+
+  Promise.map(files, function (file) {
+    return Kit.actions.addFile(project.name || project.host, file, options);
+  }).then(function (files) {
+    return files.reduce(function (acc, file) {
+      if (file.failed) {
+        return { resolved: acc.resolved, rejected: acc.rejected.concat(file) };
+      } else {
+        return { resolved: acc.resolved.concat(file), rejected: acc.rejected };
+      }
+    }, { resolved: [], rejected: [] });
+  }).then(function (_ref) {
+    var resolved = _ref.resolved;
+    var rejected = _ref.rejected;
+
+    if (resolved.length) {
+      showNotice(messages.created_files.replace(/%COUNT%/g, resolved.length) + ((resolved.length > 1 ? 's' : '') + ':'));
+      showNotice(resolved.map(function (f) {
+        return '  ' + fileName(f);
+      }).join('\n'));
+    }
+
+    if (rejected.length > 0) {
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
+};
 
 var add = function add(args, flags) {
   var files = args;
@@ -193,21 +389,47 @@ var add = function add(args, flags) {
   var currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
-    console.log(no_project_found);
+    console.log(messages.no_project_found);
   } else if (files.length === 0) {
-    console.log(specify_filename);
+    console.log(messages.specify_filename);
   } else {
-    (function () {
-      var project = currentProject;
-
-      Promise.map(files, function (file) {
-        return Kit.actions.addFile(project.name || project.host, file, options);
-      }).then(console.log);
-    })();
+    addFiles(currentProject, files, options);
   }
 };
 
 var helpText$3 = '\nRemove - removes a file, both locally and from the site\n\nUsage\n  $ ' + name + ' remove <filename>\n';
+
+var removeFiles = function removeFiles(project, files) {
+  var options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+
+  Promise.map(files, function (file) {
+    return Kit.actions.removeFile(project.name || project.host, file, options);
+  }).then(function (files) {
+    return files.reduce(function (acc, file) {
+      if (file.failed) {
+        return { resolved: acc.resolved, rejected: acc.rejected.concat(file) };
+      } else {
+        return { resolved: acc.resolved.concat(file), rejected: acc.rejected };
+      }
+    }, { resolved: [], rejected: [] });
+  }).then(function (_ref) {
+    var resolved = _ref.resolved;
+    var rejected = _ref.rejected;
+
+    if (resolved.length) {
+      showNotice(messages.removed_files.replace(/%COUNT%/g, resolved.length) + ((resolved.length > 1 ? 's' : '') + ':'));
+      showNotice(resolved.map(function (f) {
+        return '  ' + fileName(f);
+      }).join('\n'));
+    }
+
+    if (rejected.length > 0) {
+      showError('There were some errors:\n' + rejected.map(function (f) {
+        return '  ' + f.file + ' (' + f.message + ')';
+      }).join('\n'));
+    }
+  });
+};
 
 var remove = function remove(args, flags) {
   var files = args;
@@ -215,17 +437,11 @@ var remove = function remove(args, flags) {
   var currentProject = findProjectByPath(process.cwd(), options);
 
   if (!currentProject) {
-    console.log(no_project_found);
+    console.log(messages.no_project_found);
   } else if (files.length === 0) {
-    console.log(specify_filename);
+    console.log(messages.specify_filename);
   } else {
-    (function () {
-      var project = currentProject;
-
-      Promise.map(files, function (file) {
-        return Kit.actions.removeFile(project.name || project.host, file, options);
-      }).then(console.log);
-    })();
+    removeFiles(currentProject, files, options);
   }
 };
 
@@ -262,6 +478,7 @@ var onReady = function onReady() {
 var onAdd = function onAdd(project, path) {
   if (ready) {
     showNotice('File ' + path + ' has been added');
+    addFiles(project, [path]);
   }
 };
 
@@ -272,10 +489,10 @@ var onChange = function onChange(project, path) {
 
 var onRemove = function onRemove(project, path) {
   showNotice('File ' + path + ' has been removed');
+  removeFiles(project, [path]);
 };
 
 var watch = function watch(args, flags) {
-  var files = args;
   var options = _.pick(flags, 'host', 'token', 'site');
   var currentProject = findProjectByPath(process.cwd(), options);
 

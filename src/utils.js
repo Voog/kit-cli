@@ -38,31 +38,44 @@ const getCurrentProject = (flags) => {
   }
 };
 
-const progressStart = (total, format) => {
-  return new ProgressBar(format, progressBarOptions(total + 1));
-};
+/**
+ * Returns a new progressbar with the given length and format
+ * @param  {Number} total  Length of the progress bar
+ * @param  {Object} format Format for the ProgressBar (see pushFormat and pullFormat)
+ * @return {Object}        ProgressBar
+ */
+const progressStart = (total, format) => new ProgressBar(format, progressBarOptions(total + 1));
 
-const progressTick = (bar) => {
-  return (file) => {
+
+/**
+ * Returns a function that ticks the given progressbar with the given file info
+ * @param  {Object} bar   ProgressBar to tick
+ * @return {Function}     Object -> Void
+ */
+const progressTick = bar => file => {
+  if (file.failed) {
+    bar.total -= 1;
+  } else {
     bar.tick({
       file: (file.filename || file.title)
     });
-  };
+  }
 };
 
-const progressEnd = (bar) => {
-  return () => {
-    bar.tick({
-      file: 'Done!'
-    });
-  };
-};
+/**
+ * Final tick for the given progressbar
+ * @param  {Object} bar   ProgressBar to tick
+ * @return {Function}     Object -> Void
+ */
+const progressEnd = bar => (count, verb) => bar.tick({
+  file: `Successfully ${verb} ${count} file${count > 1 ? 's' : ''}`
+});
 
-const findProjectByPath = (dir, options) => {
-  return Kit.sites.byName(_.head(Kit.sites.names(options).filter(name => {
-    return dir.startsWith(Kit.sites.dirFor(name, options));
-  })));
-};
+const findProjectByPath = (dir, options) => Kit.sites.byName(_.head(
+  Kit.sites.names(options).filter(
+    name => dir.startsWith(Kit.sites.dirFor(name, options))
+  )
+));
 
 const updateConfig = (site, options = {}) => {
   if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
@@ -78,6 +91,20 @@ const updateConfig = (site, options = {}) => {
 const showError = _.flow(chalk.red, console.log);
 const showNotice = _.flow(chalk.white, console.log);
 
+const fileName = (file) => {
+  if (_.has(file, 'layout_name')) { // layout or component
+    return `${file.component ? 'components' : 'layouts'}/${file.title}`;
+  } else { // stylesheet, script file, image or asset
+    let folder;
+    if (file.asset_type !== 'unknown') {
+      folder = file.asset_type + 's';
+    } else {
+      folder = 'assets';
+    }
+    return `${folder}/${file.filename}`;
+  }
+};
+
 export {
   name,
   pushFormat,
@@ -90,5 +117,6 @@ export {
   getCurrentProject,
   updateConfig,
   showError,
-  showNotice
+  showNotice,
+  fileName
 };
