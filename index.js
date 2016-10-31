@@ -9,7 +9,6 @@ var Kit = _interopDefault(require('kit-core'));
 var _ = _interopDefault(require('lodash'));
 var chalk = _interopDefault(require('chalk'));
 var Promise = _interopDefault(require('bluebird'));
-var path = require('path');
 var chokidar = _interopDefault(require('chokidar'));
 
 var babelHelpers = {};
@@ -134,6 +133,21 @@ var fileName = function fileName(file) {
   }
 };
 
+var handleError = function handleError(error) {
+  if (!error || !error.code) {
+    showError(error);
+  }
+
+  switch (error.code) {
+    case 'ECONNREFUSED':
+    case 'ECONNRESET':
+      showError('Connection failed. Check your host and protocol settings.');
+      break;
+    default:
+      showError('Something went wrong: ' + error.message);
+  }
+};
+
 var unknown_command = "Unknown command!";
 var no_project_found = "No project found in current directory!";
 var pulling_from = "Pulling files from";
@@ -193,7 +207,7 @@ var pullAllFiles = function pullAllFiles(project, options) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
 var pullFiles = function pullFiles(project, files, options) {
@@ -232,13 +246,12 @@ var pullFiles = function pullFiles(project, files, options) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
-var pull = function pull(args, flags) {
+var pull = function pull(args, options) {
   var files = args;
-  var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = getCurrentProject(flags);
+  var currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);
@@ -290,7 +303,7 @@ var pushAllFiles = function pushAllFiles(project, options) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
 var pushFiles = function pushFiles(project, files, options) {
@@ -325,13 +338,12 @@ var pushFiles = function pushFiles(project, files, options) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
-var push = function push(args, flags) {
+var push = function push(args, options) {
   var files = args;
-  var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = getCurrentProject(flags);
+  var currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);
@@ -380,18 +392,17 @@ var addFiles = function addFiles(project, files) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
-var add = function add(args, flags) {
+var add = function add(args, options) {
   var files = args;
-  var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = findProjectByPath(process.cwd(), options);
+  var currentProject = getCurrentProject(options);
 
   if (!currentProject) {
-    console.log(messages.no_project_found);
+    showError(messages.no_project_found);
   } else if (files.length === 0) {
-    console.log(messages.specify_filename);
+    showError(messages.specify_filename);
   } else {
     addFiles(currentProject, files, options);
   }
@@ -428,13 +439,12 @@ var removeFiles = function removeFiles(project, files) {
         return '  ' + f.file + ' (' + f.message + ')';
       }).join('\n'));
     }
-  });
+  }).catch(handleError);
 };
 
-var remove = function remove(args, flags) {
+var remove = function remove(args, options) {
   var files = args;
-  var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = findProjectByPath(process.cwd(), options);
+  var currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     console.log(messages.no_project_found);
@@ -447,8 +457,8 @@ var remove = function remove(args, flags) {
 
 var helpText$4 = '\nSites - lists all sites defined in the current scope\n\nUsage\n  $ ' + name + ' sites\n';
 
-var siteRow = function siteRow(name, flags) {
-  var currentProject = getCurrentProject(flags);
+var siteRow = function siteRow(name, options) {
+  var currentProject = getCurrentProject(options);
 
   var host = Kit.sites.hostFor(name);
   var current = '';
@@ -462,9 +472,9 @@ var siteRow = function siteRow(name, flags) {
   return '  ' + name + ' (' + host + ')' + current;
 };
 
-var sites = function sites(args, flags) {
+var sites = function sites(args, options) {
   var names = Kit.sites.names();
-  console.log('Sites:\n' + names.map(_.curryRight(siteRow, flags)).join('\n') + '\n');
+  showNotice('Sites:\n' + names.map(_.curryRight(siteRow, options)).join('\n') + '\n');
 };
 
 var helpText$5 = '\nWatch - watches the current folder and adds/updates/removes files on the site\n\nUsage\n  $ ' + name + ' watch\n';
@@ -492,9 +502,8 @@ var onRemove = function onRemove(project, path) {
   removeFiles(project, [path]);
 };
 
-var watch = function watch(args, flags) {
-  var options = _.pick(flags, 'host', 'token', 'site');
-  var currentProject = findProjectByPath(process.cwd(), options);
+var watch = function watch(args, options) {
+  var currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     showError(no_project_found);
@@ -545,7 +554,7 @@ var commands = Object.freeze({
 });
 
 var cli = meow({
-  help: '\n' + name + ' is a command-line tool to synchronize Voog layout files.\n\nUsage\n  $ ' + name + ' <command> [<args] [--debug]\n\nCommands\n  pull [<files>]    Pull files\n  push [<files>]    Push files\n  add [<files>]     Add files\n  remove [<files>]  Remove files\n  watch             Watch for changes\n  sites             List all sites\n\n  help              Show this message\n  help <command>    Show help for a specific command\n\nOptions\n  --debug           Show debugging output\n',
+  help: '\n' + name + ' is a command-line tool to synchronize Voog layout files.\n\nUsage\n  $ ' + name + ' <command> [<args] [--debug]\n\nCommands\n  pull [<files>]    Pull files\n  push [<files>]    Push files\n  watch             Watch for changes\n  add [<files>]     Add files\n  remove [<files>]  Remove files\n  sites             List all sites\n\n  help <command>    Show help for a specific command\n\nOptions\n  --host            Site\'s hostname\n  --token           Your personal API token\n  --protocol        Explicit protocol (http/https)\n  --overwrite       Enable overwriting layout assets on save (images, icons etc.)\n  --debug           Show debugging output\n',
   description: false
 });
 
@@ -569,7 +578,9 @@ var printDebugInfo = function printDebugInfo(command, args, cli) {
 updateConfig({
   host: cli.flags.host,
   token: cli.flags.token,
-  name: cli.flags.name
+  protocol: cli.flags.protocol || 'http',
+  overwrite: cli.flags.overwrite || false,
+  name: cli.flags.name || cli.flags.host
 }, {
   config_path: cli.flags.configPath,
   local: true
@@ -581,15 +592,15 @@ var command = _cli$input[0];
 
 var args = _cli$input.slice(1);
 
-var flags = cli.flags;
+var options = _.pick(cli.flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug');
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
   try {
-    commands[command](args, flags);
+    commands[command](args, options);
   } catch (e) {
     showError(e.message);
 
-    if (cli.flags.debug) {
+    if (options.debug) {
       console.log(e.stack);
     }
   }
@@ -597,6 +608,6 @@ if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.
   cli.showHelp();
 }
 
-if (cli.flags.debug) {
+if (options.debug) {
   printDebugInfo(command, args, cli);
 }

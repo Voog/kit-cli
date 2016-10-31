@@ -1,13 +1,13 @@
 import Kit from 'kit-core';
 import Promise from 'bluebird';
-import _ from 'lodash';
 
 import {
   name,
-  findProjectByPath,
+  getCurrentProject,
   showNotice,
   showError,
-  fileName
+  fileName,
+  handleError
 } from '../utils';
 
 import messages from '../messages.json';
@@ -30,7 +30,7 @@ const removeFiles = (project, files, options = {}) => {
       } else {
         return {resolved: acc.resolved.concat(file), rejected: acc.rejected};
       }
-    }, {resolved: [], rejected: []})
+    }, {resolved: [], rejected: []});
   }).then(({resolved, rejected}) => {
     if (resolved.length) {
       showNotice(messages.removed_files.replace(/%COUNT%/g, resolved.length) + `${resolved.length > 1 ? 's' : ''}:`);
@@ -40,13 +40,12 @@ const removeFiles = (project, files, options = {}) => {
     if (rejected.length > 0) {
       showError(`There were some errors:\n${rejected.map(f => `  ${f.file} (${f.message})`).join('\n')}`);
     }
-  })
-}
+  }).catch(handleError);
+};
 
-const remove = (args, flags) => {
+const remove = (args, options) => {
   let files = args;
-  let options = _.pick(flags, 'host', 'token', 'site');
-  let currentProject = findProjectByPath(process.cwd(), options);
+  let currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     console.log(messages.no_project_found);

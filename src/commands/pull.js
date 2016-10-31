@@ -11,7 +11,8 @@ import {
   getCurrentProject,
   showNotice,
   showError,
-  fileName
+  fileName,
+  handleError
 } from '../utils';
 
 import messages from '../messages.json';
@@ -60,7 +61,7 @@ const pullAllFiles = (project, options) => {
         // show invalid files
         showError(`There were some errors:\n${rejected.map(f => `  ${f.file} (${f.message})`).join('\n')}`);
       }
-    });
+    }).catch(handleError);
 };
 
 const pullFiles = (project, files, options) => {
@@ -90,7 +91,7 @@ const pullFiles = (project, files, options) => {
     .then(({rejected, resolved}) => {
       if (resolved.length > 0) {
         // show final message on the progress bar
-        showNotice(`Successfully pulled ${resolved.length} file${resolved.length > 1 ? 's' : ''}:`)
+        showNotice(`Successfully pulled ${resolved.length} file${resolved.length > 1 ? 's' : ''}:`);
         showNotice(resolved.map(f => `  ${fileName(f)}`).join('\n'));
       }
 
@@ -98,13 +99,12 @@ const pullFiles = (project, files, options) => {
         // show invalid files
         showError(`There were some errors:\n${rejected.map(f => `  ${f.file} (${f.message})`).join('\n')}`);
       }
-    });
+    }).catch(handleError);
 };
 
-const pull = (args, flags) => {
+const pull = (args, options) => {
   let files = args;
-  let options = _.pick(flags, 'host', 'token', 'site');
-  let currentProject = getCurrentProject(flags);
+  let currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);

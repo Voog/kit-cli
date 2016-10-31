@@ -1,11 +1,8 @@
-import Kit from 'kit-core';
-import path from 'path';
-import Promise from 'bluebird';
 import chokidar from 'chokidar';
 import _ from 'lodash';
 import {
   name,
-  findProjectByPath,
+  getCurrentProject,
   showError,
   showNotice
 } from '../utils';
@@ -49,9 +46,8 @@ const onRemove = (project, path) => {
   removeFiles(project, [path]);
 };
 
-const watch = (args, flags) => {
-  let options = _.pick(flags, 'host', 'token', 'site');
-  let currentProject = findProjectByPath(process.cwd(), options);
+const watch = (args, options) => {
+  let currentProject = getCurrentProject(options);
 
   if (!currentProject) {
     showError(no_project_found);
@@ -69,6 +65,6 @@ const watch = (args, flags) => {
       .on('change', _.curry(onChange)(project))
       .on('unlink', _.curry(onRemove)(project));
   }
-}
+};
 
-export default watch
+export default watch;

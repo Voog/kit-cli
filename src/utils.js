@@ -46,7 +46,6 @@ const getCurrentProject = (flags) => {
  */
 const progressStart = (total, format) => new ProgressBar(format, progressBarOptions(total + 1));
 
-
 /**
  * Returns a function that ticks the given progressbar with the given file info
  * @param  {Object} bar   ProgressBar to tick
@@ -105,6 +104,21 @@ const fileName = (file) => {
   }
 };
 
+const handleError = (error) => {
+  if (!error || !error.code) {
+    showError(error);
+  }
+
+  switch (error.code) {
+  case 'ECONNREFUSED':
+  case 'ECONNRESET':
+    showError('Connection failed. Check your host and protocol settings.');
+    break;
+  default:
+    showError(`Something went wrong: ${error.message}`);
+  }
+};
+
 export {
   name,
   pushFormat,
@@ -118,5 +132,6 @@ export {
   updateConfig,
   showError,
   showNotice,
-  fileName
+  fileName,
+  handleError
 };

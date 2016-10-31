@@ -21,15 +21,18 @@ Usage
 Commands
   pull [<files>]    Pull files
   push [<files>]    Push files
+  watch             Watch for changes
   add [<files>]     Add files
   remove [<files>]  Remove files
-  watch             Watch for changes
   sites             List all sites
 
-  help              Show this message
   help <command>    Show help for a specific command
 
 Options
+  --host            Site's hostname
+  --token           Your personal API token
+  --protocol        Explicit protocol (http/https)
+  --overwrite       Enable overwriting layout assets on save (images, icons etc.)
   --debug           Show debugging output
 `,
   description: false
@@ -56,22 +59,24 @@ current project: ${_.flow([getCurrentProject, printObject])(cli.flags)}
 updateConfig({
   host: cli.flags.host,
   token: cli.flags.token,
-  name: cli.flags.name
+  protocol: cli.flags.protocol || 'http',
+  overwrite: cli.flags.overwrite || false,
+  name: cli.flags.name || cli.flags.host
 }, {
   config_path: cli.flags.configPath,
   local: true
 });
 
 let [command, ...args] = cli.input;
-let flags = cli.flags;
+let options = _.pick(cli.flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug');
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
   try {
-    commands[command](args, flags);
+    commands[command](args, options);
   } catch (e) {
     showError(e.message);
 
-    if (cli.flags.debug) {
+    if (options.debug) {
       console.log(e.stack);
     }
   }
@@ -79,6 +84,6 @@ if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.
   cli.showHelp();
 }
 
-if (cli.flags.debug) {
+if (options.debug) {
   printDebugInfo(command, args, cli);
 }

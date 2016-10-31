@@ -3,7 +3,8 @@ import _ from 'lodash';
 
 import {
   name,
-  getCurrentProject
+  getCurrentProject,
+  showNotice
 } from '../utils';
 
 export const helpText = `
@@ -13,8 +14,8 @@ Usage
   $ ${name} sites
 `;
 
-const siteRow = (name, flags) => {
-  const currentProject = getCurrentProject(flags);
+const siteRow = (name, options) => {
+  const currentProject = getCurrentProject(options);
 
   const host = Kit.sites.hostFor(name);
   let current = '';
@@ -28,9 +29,9 @@ const siteRow = (name, flags) => {
   return `  ${name} (${host})${current}`;
 };
 
-const sites = (args, flags) => {
+const sites = (args, options) => {
   const names = Kit.sites.names();
-  console.log(`Sites:\n${names.map(_.curryRight(siteRow, flags)).join('\n')}\n`);
+  showNotice(`Sites:\n${names.map(_.curryRight(siteRow, options)).join('\n')}\n`);
 };
 
 export default sites;
