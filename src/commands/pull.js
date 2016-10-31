@@ -66,15 +66,22 @@ const pullAllFiles = (project, options) => {
 
 const pullFiles = (project, files, options) => {
   // initialize progress bar with length of files given as arguments
-  let bar = progressStart(files.length, progressBarFormat);
+  let bar = progressStart(0, progressBarFormat);
   let projectName = project.name || project.host;
 
   Promise
-    .each(
-      files.map(file => Kit.actions.pullFile(projectName, file, options)),
-      // bump the progress bar as each promise resolves
-      progressTick(bar)
-    )
+    .all(files.map(file => {
+      if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
+        return Kit.actions.pullFolder(projectName, file, options);
+      } else {
+        return Kit.actions.pullFile(projectName, file, options);
+      }
+    }))
+    .then(files => {
+      bar.total = _.flatten(files).length + 1;
+      return _.flatten(files);
+    })
+    .each(progressTick(bar)) // bump the progress bar as each promise resolves
     .then(files => {
       // separate invalid files from resolved files
       return files.reduce(
@@ -89,6 +96,8 @@ const pullFiles = (project, files, options) => {
       );
     })
     .then(({rejected, resolved}) => {
+      progressEnd(bar)(); // Clear last filename from progress bar
+
       if (resolved.length > 0) {
         // show final message on the progress bar
         showNotice(`Successfully pulled ${resolved.length} file${resolved.length > 1 ? 's' : ''}:`);

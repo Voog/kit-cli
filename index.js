@@ -89,8 +89,9 @@ var progressTick = function progressTick(bar) {
  */
 var progressEnd = function progressEnd(bar) {
   return function (count, verb) {
-    return bar.tick({
-      file: 'Successfully ' + verb + ' ' + count + ' file' + (count > 1 ? 's' : '')
+    var message = 'Successfully ' + verb + ' ' + count + ' file' + (count > 1 ? 's' : '');
+    bar.tick({
+      file: typeof count === 'undefined' ? '' : message
     });
   };
 };
@@ -212,14 +213,20 @@ var pullAllFiles = function pullAllFiles(project, options) {
 
 var pullFiles = function pullFiles(project, files, options) {
   // initialize progress bar with length of files given as arguments
-  var bar = progressStart(files.length, progressBarFormat$1);
+  var bar = progressStart(0, progressBarFormat$1);
   var projectName = project.name || project.host;
 
-  Promise.each(files.map(function (file) {
-    return Kit.actions.pullFile(projectName, file, options);
-  }),
-  // bump the progress bar as each promise resolves
-  progressTick(bar)).then(function (files) {
+  Promise.all(files.map(function (file) {
+    if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
+      return Kit.actions.pullFolder(projectName, file, options);
+    } else {
+      return Kit.actions.pullFile(projectName, file, options);
+    }
+  })).then(function (files) {
+    bar.total = _.flatten(files).length + 1;
+    return _.flatten(files);
+  }).each(progressTick(bar)) // bump the progress bar as each promise resolves
+  .then(function (files) {
     // separate invalid files from resolved files
     return files.reduce(function (acc, file) {
       if (!file.failed) {
@@ -231,6 +238,8 @@ var pullFiles = function pullFiles(project, files, options) {
   }).then(function (_ref2) {
     var rejected = _ref2.rejected;
     var resolved = _ref2.resolved;
+
+    progressEnd(bar)(); // Clear last filename from progress bar
 
     if (resolved.length > 0) {
       // show final message on the progress bar
@@ -308,11 +317,20 @@ var pushAllFiles = function pushAllFiles(project, options) {
 
 var pushFiles = function pushFiles(project, files, options) {
   // initialize progress bar with length of files given as arguments
+  var bar = progressStart(0, progressBarFormat);
   var projectName = project.name || project.host;
 
   Promise.all(files.map(function (file) {
-    return Kit.actions.pushFile(projectName, file, options);
+    if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
+      return Kit.actions.pushFolder(projectName, file, options);
+    } else {
+      return Kit.actions.pushFile(projectName, file, options);
+    }
   })).then(function (files) {
+    bar.total = _.flatten(files).length + 1;
+    return _.flatten(files);
+  }).each(progressTick(bar)) // bump the progress bar as each promise resolves
+  .then(function (files) {
     // separate invalid files from resolved files
     return files.reduce(function (acc, file) {
       if (!file.failed) {
@@ -325,7 +343,10 @@ var pushFiles = function pushFiles(project, files, options) {
     var rejected = _ref2.rejected;
     var resolved = _ref2.resolved;
 
+    progressEnd(bar)(); // Clear last filename from progress bar
+
     if (resolved.length > 0) {
+      // show final message on the progress bar
       showNotice('Successfully pushed ' + resolved.length + ' file' + (resolved.length > 1 ? 's' : '') + ':');
       showNotice(resolved.map(function (f) {
         return '  ' + fileName(f);

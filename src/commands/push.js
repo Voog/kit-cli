@@ -62,12 +62,22 @@ const pushAllFiles = (project, options) => {
 
 const pushFiles = (project, files, options) => {
   // initialize progress bar with length of files given as arguments
+  let bar = progressStart(0, progressBarFormat);
   let projectName = project.name || project.host;
 
   Promise
-    .all(
-      files.map(file => Kit.actions.pushFile(projectName, file, options))
-    )
+    .all(files.map(file => {
+      if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
+        return Kit.actions.pushFolder(projectName, file, options);
+      } else {
+        return Kit.actions.pushFile(projectName, file, options);
+      }
+    }))
+    .then(files => {
+      bar.total = _.flatten(files).length + 1;
+      return _.flatten(files);
+    })
+    .each(progressTick(bar)) // bump the progress bar as each promise resolves
     .then(files => {
       // separate invalid files from resolved files
       return files.reduce(
@@ -82,7 +92,10 @@ const pushFiles = (project, files, options) => {
       );
     })
     .then(({rejected, resolved}) => {
+      progressEnd(bar)(); // Clear last filename from progress bar
+
       if (resolved.length > 0) {
+        // show final message on the progress bar
         showNotice(`Successfully pushed ${resolved.length} file${resolved.length > 1 ? 's' : ''}:`);
         showNotice(resolved.map(f => `  ${fileName(f)}`).join('\n'));
       }

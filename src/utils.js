@@ -66,9 +66,12 @@ const progressTick = bar => file => {
  * @param  {Object} bar   ProgressBar to tick
  * @return {Function}     Object -> Void
  */
-const progressEnd = bar => (count, verb) => bar.tick({
-  file: `Successfully ${verb} ${count} file${count > 1 ? 's' : ''}`
-});
+const progressEnd = bar => (count, verb) => {
+  let message = `Successfully ${verb} ${count} file${count > 1 ? 's' : ''}`;
+  bar.tick({
+    file: (typeof count === 'undefined' ? '' : message)
+  });
+};
 
 const findProjectByPath = (dir, options) => Kit.sites.byName(_.head(
   Kit.sites.names(options).filter(
