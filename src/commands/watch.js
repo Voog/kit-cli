@@ -29,21 +29,21 @@ const onReady = () => {
   ready = true;
 };
 
-const onAdd = (project, path) => {
+const onAdd = (options, project, path) => {
   if (ready) {
     showNotice(`File ${path} has been added`);
-    addFiles(project, [path]);
+    addFiles(project, [path], options);
   }
 };
 
-const onChange = (project, path) => {
+const onChange = (options, project, path) => {
   showNotice(`File ${path} has been changed`);
-  pushFiles(project, [path]);
+  pushFiles(project, [path], options);
 };
 
-const onRemove = (project, path) => {
+const onRemove = (options, project, path) => {
   showNotice(`File ${path} has been removed`);
-  removeFiles(project, [path]);
+  removeFiles(project, [path], options);
 };
 
 const watch = (args, options) => {
@@ -61,9 +61,9 @@ const watch = (args, options) => {
 
     watcher
       .on('ready', onReady)
-      .on('add', _.curry(onAdd)(project))
-      .on('change', _.curry(onChange)(project))
-      .on('unlink', _.curry(onRemove)(project));
+      .on('add', _.curry(onAdd)(options, project))
+      .on('change', _.curry(onChange)(options, project))
+      .on('unlink', _.curry(onRemove)(options, project));
   }
 };
 

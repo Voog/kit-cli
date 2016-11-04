@@ -506,21 +506,21 @@ var onReady = function onReady() {
   ready = true;
 };
 
-var onAdd = function onAdd(project, path) {
+var onAdd = function onAdd(options, project, path) {
   if (ready) {
     showNotice('File ' + path + ' has been added');
-    addFiles(project, [path]);
+    addFiles(project, [path], options);
   }
 };
 
-var onChange = function onChange(project, path) {
+var onChange = function onChange(options, project, path) {
   showNotice('File ' + path + ' has been changed');
-  pushFiles(project, [path]);
+  pushFiles(project, [path], options);
 };
 
-var onRemove = function onRemove(project, path) {
+var onRemove = function onRemove(options, project, path) {
   showNotice('File ' + path + ' has been removed');
-  removeFiles(project, [path]);
+  removeFiles(project, [path], options);
 };
 
 var watch = function watch(args, options) {
@@ -536,7 +536,7 @@ var watch = function watch(args, options) {
       persistent: true
     });
 
-    watcher.on('ready', onReady).on('add', _.curry(onAdd)(project)).on('change', _.curry(onChange)(project)).on('unlink', _.curry(onRemove)(project));
+    watcher.on('ready', onReady).on('add', _.curry(onAdd)(options, project)).on('change', _.curry(onChange)(options, project)).on('unlink', _.curry(onRemove)(options, project));
   }
 };
 
