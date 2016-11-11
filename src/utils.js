@@ -98,7 +98,7 @@ const fileName = (file) => {
     return `${file.component ? 'components' : 'layouts'}/${file.title}`;
   } else { // stylesheet, script file, image or asset
     let folder;
-    if (file.asset_type !== 'unknown') {
+    if (_.includes(['image', 'javascript', 'stylesheet'], file.asset_type)) {
       folder = file.asset_type + 's';
     } else {
       folder = 'assets';
