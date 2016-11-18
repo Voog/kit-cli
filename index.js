@@ -307,7 +307,6 @@ var pull = function pull(args, options) {
 var helpText$1 = '\nPush - pushes files to the Voog site\n\nUsage\n  $ ' + name + ' push [<files>]\n\n  Using push without arguments pushes all layout files to your site\n';
 
 var pushAllFiles = function pushAllFiles(project, options) {
-  console.log('command: pushAllFiles', options);
   var projectName = project.name || project.host;
   // initialize progress bar with number of local files
   var bar = progressStart(Kit.sites.totalFilesFor(projectName, options), progressBarFormat);

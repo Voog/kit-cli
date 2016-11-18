@@ -27,7 +27,6 @@ Usage
 `;
 
 const pushAllFiles = (project, options) => {
-  console.log('command: pushAllFiles', options);
   let projectName = project.name || project.host;
   // initialize progress bar with number of local files
   let bar = progressStart(Kit.sites.totalFilesFor(projectName, options), progressBarFormat);
