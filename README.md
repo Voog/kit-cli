@@ -18,14 +18,13 @@ Voog-kit works with configuration files, either in the current folder, in the ho
 The global file's structure should minimally be as follows:
 ```json
 {
-  "sites": [{
-    "host": "< your site's host >",
-    "token": "< your personal API token >",
-    "path": "< full path to the project's working directory >",
-    "name": "< a short name for the site here (optional)"
-  }, {
-    ...
-  }, ...]
+  "sites": [
+    {
+      "host": "< your site's primary hostname >",
+      "token": "< your API token >",
+      "path": "< full path to the project's working directory >"
+    }
+  ]
 }
 ```
 
@@ -63,3 +62,15 @@ The main commands to use voog-kit are `pull`, `push` and `watch`.
 ### sites
 
 `Sites` lists all sites that are defined in the currently active configuration file.
+
+## Options
+
+Explicit options are always preferred over the configuration file and the configuration file will be updated every time an action is performed with new options. For example, when using `voog push --overwrite` the first time, `"overwrite": true` is added to the current site's configuration block and used for later actions automatically without having to provide it every time.
+
+List of possible command-line options:
+* `host` — your site's primary hostname
+* `token` — your API token
+* `overwrite` — override the write-protection for assets and images. Old files will be deleted and replaced with new files.
+* `protocol` — specify the protocol that's used for the API requests (e.g `--protocol=https`)
+* `configPath` — full path to a specific configuration file
+* `global` — use global configuration file (`/Users/<username>/.voog` for Unix systems, `C:\Users\<username>\.voog` for Windows etc.)

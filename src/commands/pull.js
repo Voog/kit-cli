@@ -8,7 +8,7 @@ import {
   progressStart,
   progressTick,
   progressEnd,
-  getCurrentProject,
+  getCurrentSite,
   showNotice,
   showError,
   fileName,
@@ -31,7 +31,7 @@ const pullAllFiles = (project, options) => {
   // setting progress bar length to 0 at first because we don't know how many files there are before pulling
   let bar = progressStart(0, progressBarFormat);
 
-  return Kit.actions.pullAllFiles(projectName, options)
+  return Kit.actions.pullAllFiles(projectName, Object.assign({}, project, options))
     .then(promises => {
       let files = _.head(promises);
       bar.total = files.length + 1; // set progress bar length based on number of files found
@@ -72,9 +72,9 @@ const pullFiles = (project, files, options) => {
   Promise
     .all(files.map(file => {
       if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
-        return Kit.actions.pullFolder(projectName, file, options);
+        return Kit.actions.pullFolder(projectName, file, Object.assign({}, project, options));
       } else {
-        return Kit.actions.pullFile(projectName, file, options);
+        return Kit.actions.pullFile(projectName, file, Object.assign({}, project, options));
       }
     }))
     .then(files => {
@@ -113,7 +113,7 @@ const pullFiles = (project, files, options) => {
 
 const pull = (args, options) => {
   let files = args;
-  let currentProject = getCurrentProject(options);
+  let currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);

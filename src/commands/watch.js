@@ -2,7 +2,7 @@ import chokidar from 'chokidar';
 import _ from 'lodash';
 import {
   name,
-  getCurrentProject,
+  getCurrentSite,
   showError,
   showNotice
 } from '../utils';
@@ -32,22 +32,22 @@ const onReady = () => {
 const onAdd = (options, project, path) => {
   if (ready) {
     showNotice(`File ${path} has been added`);
-    addFiles(project, [path], options);
+    addFiles(project, [path], Object.assign({}, project, options));
   }
 };
 
 const onChange = (options, project, path) => {
   showNotice(`File ${path} has been changed`);
-  pushFiles(project, [path], options);
+  pushFiles(project, [path], Object.assign({}, project, options));
 };
 
 const onRemove = (options, project, path) => {
   showNotice(`File ${path} has been removed`);
-  removeFiles(project, [path], options);
+  removeFiles(project, [path], Object.assign({}, project, options));
 };
 
 const watch = (args, options) => {
-  let currentProject = getCurrentProject(options);
+  let currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showError(no_project_found);

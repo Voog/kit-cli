@@ -2,9 +2,10 @@ import meow from 'meow';
 
 import {
   name,
-  getCurrentProject,
+  getCurrentSite,
   updateConfig,
-  showError
+  showError,
+  printObject
 } from './utils';
 
 // COMMANDS
@@ -38,37 +39,30 @@ Options
   description: false
 });
 
-const printDebugInfo = (command, args, cli) => {
-  const printObject = (object = {}) => {
-    let keys = Object.keys(object);
-    if (keys.length > 0) {
-      return `{${keys.map(key => `\n  ${key}: ${object[key]}`).join('')} }`;
-    } else {
-      return '{}';
-    }
-  };
+const getOptions = (flags) => {
+  return _.pick(flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug', 'configPath', 'local', 'global');
+};
 
+const printDebugInfo = (command, args, cli) => {
   console.log(`-------
 command: ${command}
 arguments: ${args.join(' ')}
 options: ${printObject(cli.flags)}
-current project: ${_.flow([getCurrentProject, printObject])(cli.flags)}
+current project: ${_.flow([getCurrentSite, printObject])(getOptions(cli.flags))}
 -------`);
 };
+
+let options = getOptions(cli.flags);
 
 updateConfig({
   host: cli.flags.host,
   token: cli.flags.token,
-  protocol: cli.flags.protocol || 'http',
-  overwrite: cli.flags.overwrite || false,
+  protocol: cli.flags.protocol,
+  overwrite: cli.flags.overwrite,
   name: cli.flags.name || cli.flags.host
-}, {
-  config_path: cli.flags.configPath,
-  local: true
-});
+}, options);
 
 let [command, ...args] = cli.input;
-let options = _.pick(cli.flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug');
 
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
   try {

@@ -3,7 +3,7 @@ import Promise from 'bluebird';
 
 import {
   name,
-  getCurrentProject,
+  getCurrentSite,
   showNotice,
   showError,
   fileName,
@@ -22,7 +22,7 @@ Usage
 const addFiles = (project, files, options = {}) => {
   Promise.map(
     files,
-    file => Kit.actions.addFile((project.name || project.host), file, options)
+    file => Kit.actions.addFile((project.name || project.host), file, Object.assign({}, project, options))
   ).then(files => {
     return files.reduce((acc, file) => {
       if (file.failed) {
@@ -45,7 +45,7 @@ const addFiles = (project, files, options = {}) => {
 
 const add = (args, options) => {
   let files = args;
-  let currentProject = getCurrentProject(options);
+  let currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showError(messages.no_project_found);

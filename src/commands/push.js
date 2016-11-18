@@ -8,7 +8,7 @@ import {
   progressStart,
   progressTick,
   progressEnd,
-  getCurrentProject,
+  getCurrentSite,
   showNotice,
   showError,
   fileName,
@@ -27,11 +27,12 @@ Usage
 `;
 
 const pushAllFiles = (project, options) => {
+  console.log('command: pushAllFiles', options);
   let projectName = project.name || project.host;
   // initialize progress bar with number of local files
   let bar = progressStart(Kit.sites.totalFilesFor(projectName, options), progressBarFormat);
 
-  return Kit.actions.pushAllFiles(projectName, options)
+  return Kit.actions.pushAllFiles(projectName, Object.assign({}, project, options))
     .then(promises => _.head(promises))
     .each(progressTick(bar)) // bump progress bar as each promise resolves
     .then(files => {
@@ -68,9 +69,9 @@ const pushFiles = (project, files, options) => {
   Promise
     .all(files.map(file => {
       if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
-        return Kit.actions.pushFolder(projectName, file, options);
+        return Kit.actions.pushFolder(projectName, file, Object.assign({}, project, options));
       } else {
-        return Kit.actions.pushFile(projectName, file, options);
+        return Kit.actions.pushFile(projectName, file, Object.assign({}, project, options));
       }
     }))
     .then(files => {
@@ -109,7 +110,7 @@ const pushFiles = (project, files, options) => {
 
 const push = (args, options) => {
   let files = args;
-  let currentProject = getCurrentProject(options);
+  let currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);

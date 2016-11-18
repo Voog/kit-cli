@@ -18,7 +18,7 @@
     "chalk": "^1.1.1",
     "chokidar": "^1.4.3",
     "inquirer": "^1.1.2",
-    "kit-core": "^0.3.2",
+    "kit-core": "^0.3.3",
     "lodash": "^4.6.1",
     "meow": "^3.7.0",
     "npm-run": "^3.0.0",

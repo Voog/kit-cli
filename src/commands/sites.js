@@ -3,7 +3,7 @@ import _ from 'lodash';
 
 import {
   name,
-  getCurrentProject,
+  getCurrentSite,
   showNotice
 } from '../utils';
 
@@ -14,10 +14,10 @@ Usage
   $ ${name} sites
 `;
 
-const siteRow = (name, options) => {
-  const currentProject = getCurrentProject(options);
+const siteRow = (name, options = {}) => {
+  const currentProject = getCurrentSite(options);
 
-  const host = Kit.sites.hostFor(name);
+  const host = Kit.sites.hostFor(name, options);
   let current = '';
 
   if (!currentProject) {
@@ -29,9 +29,9 @@ const siteRow = (name, options) => {
   return `  ${name} (${host})${current}`;
 };
 
-const sites = (args, options) => {
-  const names = Kit.sites.names();
-  showNotice(`Sites:\n${names.map(_.curryRight(siteRow, options)).join('\n')}\n`);
+const sites = (args, options = {}) => {
+  const names = Kit.sites.names(options);
+  showNotice(`Sites:\n${names.map((name) => siteRow(name, options)).join('\n')}\n`);
 };
 
 export default sites;

@@ -1,12 +1,12 @@
 {
   "unknown_command": "Unknown command!",
-  "no_project_found": "No project found in current directory!",
+  "no_project_found": "No projects found in current directory!",
   "pulling_from": "Pulling files from",
   "pulling_file_from": "Pulling %FILE% from",
   "pushing_to": "Pushing files to",
   "pushing_file_to": "Pushing %FILE% to",
   "created_files": "Created %COUNT% new file",
   "removed_files": "Removed %COUNT% file",
-  "watcher_ready": "Initial scan complete. Ready for changes",
+  "watcher_ready": "Watcher initialized. Press <Ctrl-C> to quit.",
   "specify_filename": "Please specify filename!"
 }

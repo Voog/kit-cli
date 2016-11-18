@@ -19,9 +19,8 @@ const progressBarOptions = (total) => {
   };
 };
 
-const getCurrentProject = (flags) => {
+const getCurrentSite = (options = {}) => {
   let currentDir = process.cwd();
-  let options = _.pick(flags, 'configPath', 'global', 'local', 'host', 'token', 'site', 'name');
 
   try {
     // prefer explicit options
@@ -73,13 +72,16 @@ const progressEnd = bar => (count, verb) => {
   });
 };
 
-const findProjectByPath = (dir, options) => Kit.sites.byName(_.head(
-  Kit.sites.names(options).filter(
-    name => dir.startsWith(Kit.sites.dirFor(name, options))
-  )
-));
+const findProjectByPath = (dir, options = {}) => {
+  return Kit.sites.byName(_.head(
+    Kit.sites.names(options)
+      .filter(name => dir.startsWith(Kit.sites.dirFor(name, options)))
+    ),
+    options
+  );
+};
 
-const updateConfig = (site, options = {}) => {
+const updateConfig = (site = {}, options = {}) => {
   if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
     if (!Kit.config.configExists(options)) {
       showError('Config not found.');
@@ -87,6 +89,28 @@ const updateConfig = (site, options = {}) => {
     }
     showNotice('Creating config and adding site', (site.name ? `${site.name} (${site.host})` : site.host));
     Kit.sites.add(Object.assign({}, site, {path: process.cwd()}), options);
+  } else {
+    let currentSite = getCurrentSite(options);
+    let updates = Object.keys(site).reduce((acc, key) => {
+      if (_.includes(['name', 'host', 'token'], key)) { return acc; }
+
+      if (typeof site[key] != 'undefined') { acc[key] = site[key]; }
+
+      return acc;
+    }, {});
+    if (Object.keys(updates).length > 0) {
+      showNotice(`Updating configuration for [${currentSite.name || currentSite.host}]:`, printObject(updates));
+      Kit.config.updateSite((currentSite.name || currentSite.host), updates, options);
+    }
+  }
+};
+
+const printObject = (object = {}) => {
+  let keys = Object.keys(object);
+  if (keys.length > 0) {
+    return `{${keys.map(key => `\n  ${key}: ${object[key]}`).join('')}\n}`;
+  } else {
+    return '{ }';
   }
 };
 
@@ -131,10 +155,11 @@ export {
   progressTick,
   progressEnd,
   findProjectByPath,
-  getCurrentProject,
+  getCurrentSite,
   updateConfig,
   showError,
   showNotice,
   fileName,
-  handleError
+  handleError,
+  printObject
 };

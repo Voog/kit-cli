@@ -8,16 +8,8 @@ var ProgressBar = _interopDefault(require('progress'));
 var Kit = _interopDefault(require('kit-core'));
 var _ = _interopDefault(require('lodash'));
 var chalk = _interopDefault(require('chalk'));
-var Promise = _interopDefault(require('bluebird'));
+var Promise$1 = _interopDefault(require('bluebird'));
 var chokidar = _interopDefault(require('chokidar'));
-
-var babelHelpers = {};
-
-babelHelpers.toArray = function (arr) {
-  return Array.isArray(arr) ? arr : Array.from(arr);
-};
-
-babelHelpers;
 
 var bin = { "voog": "./index.js", "kit": "./index.js" };
 
@@ -36,9 +28,10 @@ var progressBarOptions = function progressBarOptions(total) {
   };
 };
 
-var getCurrentProject = function getCurrentProject(flags) {
+var getCurrentSite = function getCurrentSite() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
   var currentDir = process.cwd();
-  var options = _.pick(flags, 'configPath', 'global', 'local', 'host', 'token', 'site', 'name');
 
   try {
     // prefer explicit options
@@ -48,8 +41,8 @@ var getCurrentProject = function getCurrentProject(flags) {
       return _.pick(options, 'host', 'token');
       // otherwise use Kit's own config logic
     } else {
-        return findProjectByPath(currentDir, options);
-      }
+      return findProjectByPath(currentDir, options);
+    }
   } catch (e) {
     showError(e.message);
   }
@@ -96,14 +89,17 @@ var progressEnd = function progressEnd(bar) {
   };
 };
 
-var findProjectByPath = function findProjectByPath(dir, options) {
+var findProjectByPath = function findProjectByPath(dir) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
   return Kit.sites.byName(_.head(Kit.sites.names(options).filter(function (name) {
     return dir.startsWith(Kit.sites.dirFor(name, options));
-  })));
+  })), options);
 };
 
-var updateConfig = function updateConfig(site) {
-  var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+var updateConfig = function updateConfig() {
+  var site = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
   if (_.has(site, 'host') && _.has(site, 'token') && _.indexOf(Kit.sites.hosts, site.host) < 0) {
     if (!Kit.config.configExists(options)) {
@@ -112,6 +108,36 @@ var updateConfig = function updateConfig(site) {
     }
     showNotice('Creating config and adding site', site.name ? site.name + ' (' + site.host + ')' : site.host);
     Kit.sites.add(Object.assign({}, site, { path: process.cwd() }), options);
+  } else {
+    var currentSite = getCurrentSite(options);
+    var updates = Object.keys(site).reduce(function (acc, key) {
+      if (_.includes(['name', 'host', 'token'], key)) {
+        return acc;
+      }
+
+      if (typeof site[key] != 'undefined') {
+        acc[key] = site[key];
+      }
+
+      return acc;
+    }, {});
+    if (Object.keys(updates).length > 0) {
+      showNotice('Updating configuration for [' + (currentSite.name || currentSite.host) + ']:', printObject(updates));
+      Kit.config.updateSite(currentSite.name || currentSite.host, updates, options);
+    }
+  }
+};
+
+var printObject = function printObject() {
+  var object = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+  var keys = Object.keys(object);
+  if (keys.length > 0) {
+    return '{' + keys.map(function (key) {
+      return '\n  ' + key + ': ' + object[key];
+    }).join('') + '\n}';
+  } else {
+    return '{ }';
   }
 };
 
@@ -150,14 +176,14 @@ var handleError = function handleError(error) {
 };
 
 var unknown_command = "Unknown command!";
-var no_project_found = "No project found in current directory!";
+var no_project_found = "No projects found in current directory!";
 var pulling_from = "Pulling files from";
 var pulling_file_from = "Pulling %FILE% from";
 var pushing_to = "Pushing files to";
 var pushing_file_to = "Pushing %FILE% to";
 var created_files = "Created %COUNT% new file";
 var removed_files = "Removed %COUNT% file";
-var watcher_ready = "Initial scan complete. Ready for changes";
+var watcher_ready = "Watcher initialized. Press <Ctrl-C> to quit.";
 var specify_filename = "Please specify filename!";
 var messages = {
 	unknown_command: unknown_command,
@@ -179,7 +205,7 @@ var pullAllFiles = function pullAllFiles(project, options) {
   // setting progress bar length to 0 at first because we don't know how many files there are before pulling
   var bar = progressStart(0, progressBarFormat$1);
 
-  return Kit.actions.pullAllFiles(projectName, options).then(function (promises) {
+  return Kit.actions.pullAllFiles(projectName, Object.assign({}, project, options)).then(function (promises) {
     var files = _.head(promises);
     bar.total = files.length + 1; // set progress bar length based on number of files found
     return files;
@@ -194,8 +220,8 @@ var pullAllFiles = function pullAllFiles(project, options) {
       }
     }, { rejected: [], resolved: [] });
   }).then(function (_ref) {
-    var rejected = _ref.rejected;
-    var resolved = _ref.resolved;
+    var rejected = _ref.rejected,
+        resolved = _ref.resolved;
 
     if (resolved.length > 0) {
       // show final message on the progress bar
@@ -216,11 +242,11 @@ var pullFiles = function pullFiles(project, files, options) {
   var bar = progressStart(0, progressBarFormat$1);
   var projectName = project.name || project.host;
 
-  Promise.all(files.map(function (file) {
+  Promise$1.all(files.map(function (file) {
     if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
-      return Kit.actions.pullFolder(projectName, file, options);
+      return Kit.actions.pullFolder(projectName, file, Object.assign({}, project, options));
     } else {
-      return Kit.actions.pullFile(projectName, file, options);
+      return Kit.actions.pullFile(projectName, file, Object.assign({}, project, options));
     }
   })).then(function (files) {
     bar.total = _.flatten(files).length + 1;
@@ -236,8 +262,8 @@ var pullFiles = function pullFiles(project, files, options) {
       }
     }, { rejected: [], resolved: [] });
   }).then(function (_ref2) {
-    var rejected = _ref2.rejected;
-    var resolved = _ref2.resolved;
+    var rejected = _ref2.rejected,
+        resolved = _ref2.resolved;
 
     progressEnd(bar)(); // Clear last filename from progress bar
 
@@ -260,7 +286,7 @@ var pullFiles = function pullFiles(project, files, options) {
 
 var pull = function pull(args, options) {
   var files = args;
-  var currentProject = getCurrentProject(options);
+  var currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);
@@ -281,11 +307,12 @@ var pull = function pull(args, options) {
 var helpText$1 = '\nPush - pushes files to the Voog site\n\nUsage\n  $ ' + name + ' push [<files>]\n\n  Using push without arguments pushes all layout files to your site\n';
 
 var pushAllFiles = function pushAllFiles(project, options) {
+  console.log('command: pushAllFiles', options);
   var projectName = project.name || project.host;
   // initialize progress bar with number of local files
   var bar = progressStart(Kit.sites.totalFilesFor(projectName, options), progressBarFormat);
 
-  return Kit.actions.pushAllFiles(projectName, options).then(function (promises) {
+  return Kit.actions.pushAllFiles(projectName, Object.assign({}, project, options)).then(function (promises) {
     return _.head(promises);
   }).each(progressTick(bar)) // bump progress bar as each promise resolves
   .then(function (files) {
@@ -298,8 +325,8 @@ var pushAllFiles = function pushAllFiles(project, options) {
       }
     }, { rejected: [], resolved: [] });
   }).then(function (_ref) {
-    var rejected = _ref.rejected;
-    var resolved = _ref.resolved;
+    var rejected = _ref.rejected,
+        resolved = _ref.resolved;
 
     if (resolved.length > 0) {
       // show final message on the progress bar
@@ -320,11 +347,11 @@ var pushFiles = function pushFiles(project, files, options) {
   var bar = progressStart(0, progressBarFormat);
   var projectName = project.name || project.host;
 
-  Promise.all(files.map(function (file) {
+  Promise$1.all(files.map(function (file) {
     if (_.includes(['layouts', 'components', 'images', 'assets', 'stylesheets', 'javascripts'], file)) {
-      return Kit.actions.pushFolder(projectName, file, options);
+      return Kit.actions.pushFolder(projectName, file, Object.assign({}, project, options));
     } else {
-      return Kit.actions.pushFile(projectName, file, options);
+      return Kit.actions.pushFile(projectName, file, Object.assign({}, project, options));
     }
   })).then(function (files) {
     bar.total = _.flatten(files).length + 1;
@@ -340,8 +367,8 @@ var pushFiles = function pushFiles(project, files, options) {
       }
     }, { rejected: [], resolved: [] });
   }).then(function (_ref2) {
-    var rejected = _ref2.rejected;
-    var resolved = _ref2.resolved;
+    var rejected = _ref2.rejected,
+        resolved = _ref2.resolved;
 
     progressEnd(bar)(); // Clear last filename from progress bar
 
@@ -364,7 +391,7 @@ var pushFiles = function pushFiles(project, files, options) {
 
 var push = function push(args, options) {
   var files = args;
-  var currentProject = getCurrentProject(options);
+  var currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showNotice(messages.no_project_found);
@@ -385,10 +412,10 @@ var push = function push(args, options) {
 var helpText$2 = '\nAdd - creates a new file and adds it to the site\n\nUsage\n  $ ' + name + ' name <filename>\n';
 
 var addFiles = function addFiles(project, files) {
-  var options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+  var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-  Promise.map(files, function (file) {
-    return Kit.actions.addFile(project.name || project.host, file, options);
+  Promise$1.map(files, function (file) {
+    return Kit.actions.addFile(project.name || project.host, file, Object.assign({}, project, options));
   }).then(function (files) {
     return files.reduce(function (acc, file) {
       if (file.failed) {
@@ -398,8 +425,8 @@ var addFiles = function addFiles(project, files) {
       }
     }, { resolved: [], rejected: [] });
   }).then(function (_ref) {
-    var resolved = _ref.resolved;
-    var rejected = _ref.rejected;
+    var resolved = _ref.resolved,
+        rejected = _ref.rejected;
 
     if (resolved.length) {
       showNotice(messages.created_files.replace(/%COUNT%/g, resolved.length) + ((resolved.length > 1 ? 's' : '') + ':'));
@@ -418,7 +445,7 @@ var addFiles = function addFiles(project, files) {
 
 var add = function add(args, options) {
   var files = args;
-  var currentProject = getCurrentProject(options);
+  var currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showError(messages.no_project_found);
@@ -432,10 +459,10 @@ var add = function add(args, options) {
 var helpText$3 = '\nRemove - removes a file, both locally and from the site\n\nUsage\n  $ ' + name + ' remove <filename>\n';
 
 var removeFiles = function removeFiles(project, files) {
-  var options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+  var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-  Promise.map(files, function (file) {
-    return Kit.actions.removeFile(project.name || project.host, file, options);
+  Promise$1.map(files, function (file) {
+    return Kit.actions.removeFile(project.name || project.host, file, Object.assign({}, project, options));
   }).then(function (files) {
     return files.reduce(function (acc, file) {
       if (file.failed) {
@@ -445,8 +472,8 @@ var removeFiles = function removeFiles(project, files) {
       }
     }, { resolved: [], rejected: [] });
   }).then(function (_ref) {
-    var resolved = _ref.resolved;
-    var rejected = _ref.rejected;
+    var resolved = _ref.resolved,
+        rejected = _ref.rejected;
 
     if (resolved.length) {
       showNotice(messages.removed_files.replace(/%COUNT%/g, resolved.length) + ((resolved.length > 1 ? 's' : '') + ':'));
@@ -465,7 +492,7 @@ var removeFiles = function removeFiles(project, files) {
 
 var remove = function remove(args, options) {
   var files = args;
-  var currentProject = getCurrentProject(options);
+  var currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     console.log(messages.no_project_found);
@@ -478,10 +505,12 @@ var remove = function remove(args, options) {
 
 var helpText$4 = '\nSites - lists all sites defined in the current scope\n\nUsage\n  $ ' + name + ' sites\n';
 
-var siteRow = function siteRow(name, options) {
-  var currentProject = getCurrentProject(options);
+var siteRow = function siteRow(name) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-  var host = Kit.sites.hostFor(name);
+  var currentProject = getCurrentSite(options);
+
+  var host = Kit.sites.hostFor(name, options);
   var current = '';
 
   if (!currentProject) {
@@ -493,9 +522,13 @@ var siteRow = function siteRow(name, options) {
   return '  ' + name + ' (' + host + ')' + current;
 };
 
-var sites = function sites(args, options) {
-  var names = Kit.sites.names();
-  showNotice('Sites:\n' + names.map(_.curryRight(siteRow, options)).join('\n') + '\n');
+var sites = function sites(args) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+  var names = Kit.sites.names(options);
+  showNotice('Sites:\n' + names.map(function (name) {
+    return siteRow(name, options);
+  }).join('\n') + '\n');
 };
 
 var helpText$5 = '\nWatch - watches the current folder and adds/updates/removes files on the site\n\nUsage\n  $ ' + name + ' watch\n';
@@ -509,22 +542,22 @@ var onReady = function onReady() {
 var onAdd = function onAdd(options, project, path) {
   if (ready) {
     showNotice('File ' + path + ' has been added');
-    addFiles(project, [path], options);
+    addFiles(project, [path], Object.assign({}, project, options));
   }
 };
 
 var onChange = function onChange(options, project, path) {
   showNotice('File ' + path + ' has been changed');
-  pushFiles(project, [path], options);
+  pushFiles(project, [path], Object.assign({}, project, options));
 };
 
 var onRemove = function onRemove(options, project, path) {
   showNotice('File ' + path + ' has been removed');
-  removeFiles(project, [path], options);
+  removeFiles(project, [path], Object.assign({}, project, options));
 };
 
 var watch = function watch(args, options) {
-  var currentProject = getCurrentProject(options);
+  var currentProject = getCurrentSite(options);
 
   if (!currentProject) {
     showError(no_project_found);
@@ -574,47 +607,149 @@ var commands = Object.freeze({
 	remove: remove
 });
 
+var asyncGenerator = function () {
+  function AwaitValue(value) {
+    this.value = value;
+  }
+
+  function AsyncGenerator(gen) {
+    var front, back;
+
+    function send(key, arg) {
+      return new Promise(function (resolve, reject) {
+        var request = {
+          key: key,
+          arg: arg,
+          resolve: resolve,
+          reject: reject,
+          next: null
+        };
+
+        if (back) {
+          back = back.next = request;
+        } else {
+          front = back = request;
+          resume(key, arg);
+        }
+      });
+    }
+
+    function resume(key, arg) {
+      try {
+        var result = gen[key](arg);
+        var value = result.value;
+
+        if (value instanceof AwaitValue) {
+          Promise.resolve(value.value).then(function (arg) {
+            resume("next", arg);
+          }, function (arg) {
+            resume("throw", arg);
+          });
+        } else {
+          settle(result.done ? "return" : "normal", result.value);
+        }
+      } catch (err) {
+        settle("throw", err);
+      }
+    }
+
+    function settle(type, value) {
+      switch (type) {
+        case "return":
+          front.resolve({
+            value: value,
+            done: true
+          });
+          break;
+
+        case "throw":
+          front.reject(value);
+          break;
+
+        default:
+          front.resolve({
+            value: value,
+            done: false
+          });
+          break;
+      }
+
+      front = front.next;
+
+      if (front) {
+        resume(front.key, front.arg);
+      } else {
+        back = null;
+      }
+    }
+
+    this._invoke = send;
+
+    if (typeof gen.return !== "function") {
+      this.return = undefined;
+    }
+  }
+
+  if (typeof Symbol === "function" && Symbol.asyncIterator) {
+    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
+      return this;
+    };
+  }
+
+  AsyncGenerator.prototype.next = function (arg) {
+    return this._invoke("next", arg);
+  };
+
+  AsyncGenerator.prototype.throw = function (arg) {
+    return this._invoke("throw", arg);
+  };
+
+  AsyncGenerator.prototype.return = function (arg) {
+    return this._invoke("return", arg);
+  };
+
+  return {
+    wrap: function (fn) {
+      return function () {
+        return new AsyncGenerator(fn.apply(this, arguments));
+      };
+    },
+    await: function (value) {
+      return new AwaitValue(value);
+    }
+  };
+}();
+
+var toArray = function (arr) {
+  return Array.isArray(arr) ? arr : Array.from(arr);
+};
+
 var cli = meow({
   help: '\n' + name + ' is a command-line tool to synchronize Voog layout files.\n\nUsage\n  $ ' + name + ' <command> [<args] [--debug]\n\nCommands\n  pull [<files>]    Pull files\n  push [<files>]    Push files\n  watch             Watch for changes\n  add [<files>]     Add files\n  remove [<files>]  Remove files\n  sites             List all sites\n\n  help <command>    Show help for a specific command\n\nOptions\n  --host            Site\'s hostname\n  --token           Your personal API token\n  --protocol        Explicit protocol (http/https)\n  --overwrite       Enable overwriting layout assets on save (images, icons etc.)\n  --debug           Show debugging output\n',
   description: false
 });
 
-var printDebugInfo = function printDebugInfo(command, args, cli) {
-  var printObject = function printObject() {
-    var object = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
-
-    var keys = Object.keys(object);
-    if (keys.length > 0) {
-      return '{' + keys.map(function (key) {
-        return '\n  ' + key + ': ' + object[key];
-      }).join('') + ' }';
-    } else {
-      return '{}';
-    }
-  };
-
-  console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _.flow([getCurrentProject, printObject])(cli.flags) + '\n-------');
+var getOptions = function getOptions(flags) {
+  return _.pick(flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug', 'configPath', 'local', 'global');
 };
+
+var printDebugInfo = function printDebugInfo(command, args, cli) {
+  console.log('-------\ncommand: ' + command + '\narguments: ' + args.join(' ') + '\noptions: ' + printObject(cli.flags) + '\ncurrent project: ' + _.flow([getCurrentSite, printObject])(getOptions(cli.flags)) + '\n-------');
+};
+
+var options = getOptions(cli.flags);
 
 updateConfig({
   host: cli.flags.host,
   token: cli.flags.token,
-  protocol: cli.flags.protocol || 'http',
-  overwrite: cli.flags.overwrite || false,
+  protocol: cli.flags.protocol,
+  overwrite: cli.flags.overwrite,
   name: cli.flags.name || cli.flags.host
-}, {
-  config_path: cli.flags.configPath,
-  local: true
-});
+}, options);
 
-var _cli$input = babelHelpers.toArray(cli.input);
-
+var _cli$input = toArray(cli.input);
 var command = _cli$input[0];
-
 var args = _cli$input.slice(1);
-
-var options = _.pick(cli.flags, 'host', 'token', 'name', 'protocol', 'overwrite', 'debug');
-
 if (Object.keys(commands).indexOf(command) >= 0 && !(command === 'help' && args.length === 0)) {
   try {
     commands[command](args, options);
