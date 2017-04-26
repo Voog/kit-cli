@@ -1,4 +1,10 @@
-#Voog Developer Toolkit
+# Voog Developer Toolkit
+
+
+
+*Disclaimer: the Node version of Kit is currently not actively maintained and, as a result, highly unstable. Works best on Macs, has some major issues on Linux and Windows.*
+
+
 
 This Node version of the previous [Developer Toolkit](http://github.com/Voog/voog-kit) aims to be functionally identical, but more approachable to modern front-end developers. Powered by [kit-core](http://github.com/Voog/kit-core), the developer toolkit library.
 
